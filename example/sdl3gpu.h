@@ -13,7 +13,6 @@
 //
 
 #include <algorithm>
-#include <format>
 #include <string>
 
 #include <SDL3/SDL.h>

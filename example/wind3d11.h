@@ -16,7 +16,6 @@
 #undef APIENTRY
 
 #include <algorithm>
-#include <format>
 #include <string>
 
 #include <d3d11.h>

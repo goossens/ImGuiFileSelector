@@ -9,7 +9,6 @@
 //	Include files
 //
 
-#include <format>
 #include <iomanip>
 #include <random>
 #include <sstream>
