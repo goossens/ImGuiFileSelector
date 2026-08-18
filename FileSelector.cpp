@@ -75,6 +75,23 @@ bool FileSelector::Render(ImVec2 size) {
 		renderFileDialog();
 
 		if (hasAction) {
+			// handle
+			if (type == Type::openFile && !selectedPath.empty()) {
+				// get director of selected path
+				auto directory = selectedPath.parent_path();
+
+				// remove old recent places entry to avoid duplicates
+				auto i = std::find(recentPlaces.begin(), recentPlaces.end(), directory);
+
+				if (i != recentPlaces.end()) {
+					recentPlaces.erase(i);
+				}
+
+				// limit list (if required) and add new entry
+				if (recentPlaces.size() > 7) { recentPlaces.resize(7); }
+				recentPlaces.emplace(recentPlaces.begin(), directory);
+			}
+
 			ImGui::CloseCurrentPopup();
 			currentLabel.clear();
 			type = Type::idle;
@@ -219,7 +236,7 @@ void FileSelector::renderFileDialog() {
 	ImGui::EndChild();
 	ImGui::SameLine();
 
-	if (ImGui::BeginChild("mainArea")) {
+	if (ImGui::BeginChild("mainArea", ImGui::GetContentRegionAvail())) {
 		renderHeader();
 		availableSpace = ImGui::GetContentRegionAvail();
 		auto actionButtonHeight = frameHeight * 1.5f + itemSpacing.y * 2.0f;
@@ -272,15 +289,35 @@ void FileSelector::renderHeader() {
 	if (disabled) { ImGui::EndDisabled(); }
 
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x * 0.25f, pos.y));
+	float itemHeight = ImGui::GetTextLineHeightWithSpacing();
+	float popupHeight = itemHeight * 12 + ImGui::GetStyle().FramePadding.y * 4.0f;
+	ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, popupHeight));
 	ImGui::SetNextItemWidth(availableSpace.x * 0.4f);
 
 	if (ImGui::BeginCombo("###pathSelector", pathStack[0].name.c_str())) {
 		bool dummy = false;
 
 		for (auto i = pathStack.begin() + 1; i < pathStack.end(); i++) {
+			ImGui::PushID(&(*i));
+
 			if (ImGui::Selectable(i->name.c_str(), dummy)) {
 				setCurrentPath(i->path);
 			}
+
+			ImGui::PopID();
+		}
+
+		ImGui::Separator();
+		ImGui::TextDisabled("%s", labels.recentPlaces.c_str());
+
+		for (auto i = recentPlaces.begin(); i < recentPlaces.end(); i++) {
+			ImGui::PushID(&(*i));
+
+			if (ImGui::Selectable(i->filename().c_str())) {
+				setCurrentPath(*i);
+			}
+
+			ImGui::PopID();
 		}
 
 		ImGui::EndCombo();
@@ -288,9 +325,14 @@ void FileSelector::renderHeader() {
 
 	ImGui::SameLine();
 
+	char buffer[256]={};
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x * 0.75f, pos.y));
-	char buffer[2000]={};
-	ImGui::InputTextWithHint("search", "search...", buffer, sizeof(buffer));
+	ImGui::SetNextItemWidth(availableSpace.x * 0.25f);
+
+	if (ImGui::InputTextWithHint("###search", labels.search.c_str(), buffer, sizeof(buffer))) {
+
+	}
+
 	spacing();
 }
 
@@ -302,6 +344,7 @@ void FileSelector::renderHeader() {
 void FileSelector::renderListView(ImVec2 size) {
 	// build table of current nodes
 	ImGuiTableFlags tableFlags =
+		ImGuiTableFlags_ScrollY |
 		ImGuiTableFlags_RowBg |
 		ImGuiTableFlags_BordersOuterH |
 		ImGuiTableFlags_Sortable;
@@ -450,7 +493,7 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 	std::tm localTime;
 
 #ifdef _WIN32
-	localtime_s(&localTime, &t);
+	localtime_s(&localTime, &tt);
 
 #else
 	localtime_r(&tt, &localTime);

@@ -74,6 +74,8 @@ public:
 		std::string nameColumn;
 		std::string dateColumn;
 		std::string sizeColumn;
+		std::string search;
+		std::string recentPlaces;
 		std::string timeFormat;
 	};
 
@@ -91,6 +93,8 @@ private:
 		"Name",
 		"Date",
 		"Size",
+		"search...",
+		"Recent Places",
 		"%b %d, %Y at %I:%M %p"
 	};
 
@@ -114,6 +118,9 @@ private:
 	// directory traversal history in current session
 	std::vector<std::filesystem::path> pathHistory;
 	size_t historyIndex = 0;
+
+	// recent places
+	std::vector<std::filesystem::path> recentPlaces;
 
 	// a named path
 	struct NamedPath {
