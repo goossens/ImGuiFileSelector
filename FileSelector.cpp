@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <sstream>
 
 #include "FileSelector.h"
@@ -444,12 +445,19 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 
 	auto duration = lastUpdate - fileNow;
 	auto sysTime = wallNow + std::chrono::duration_cast<std::chrono::system_clock::duration>(duration);
+
 	auto tt = std::chrono::system_clock::to_time_t(sysTime);
-	std::tm* localTime = std::localtime(&tt);
+	std::tm localTime;
+
+#ifdef _WIN32
+	localtime_s(&localTime, &t);
+
+#else
+	localtime_r(&tt, &localTime);
+#endif
 
 	std::stringstream ss;
-	// ss << std::put_time(localTime, "%c");
-	ss << std::put_time(localTime, format.c_str());
+	ss << std::put_time(&localTime, format.c_str());
 	return ss.str();
 }
 
