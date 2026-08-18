@@ -313,7 +313,7 @@ void FileSelector::renderHeader() {
 		for (auto i = recentPlaces.begin(); i < recentPlaces.end(); i++) {
 			ImGui::PushID(&(*i));
 
-			if (ImGui::Selectable(i->filename().c_str())) {
+			if (ImGui::Selectable(i->filename().string().c_str())) {
 				setCurrentPath(*i);
 			}
 
