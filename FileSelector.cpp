@@ -128,7 +128,7 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 
 	for (auto i = currentPath.begin(); i != currentPath.end(); i++) {
 		partialPath /= *i;
-		pathStack.emplace_back(i->string(), partialPath);
+		pathStack.emplace_back(i->u8string(), partialPath);
 	}
 
 	std::reverse(pathStack.begin(), pathStack.end());
@@ -157,7 +157,7 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 				node.isSelected = false;
 
 				// precalculate strings for faster rendering
-				node.pathString = node.path.filename().string();
+				node.pathString = node.path.filename().u8string();
 				node.sizeString = node.isDirectory ? "    ---" : node.readableSize();
 				node.updateString = node.readableDate(labels.timeFormat);
 
@@ -314,7 +314,7 @@ void FileSelector::renderHeader() {
 		for (auto i = pathStack.begin() + 1; i < pathStack.end(); i++) {
 			ImGui::PushID(&(*i));
 
-			if (ImGui::Selectable(i->name.c_str(), dummy)) {
+			if (ImGui::Selectable(reinterpret_cast<const char*>(i->name.c_str()), dummy)) {
 				setCurrentPath(i->path);
 			}
 
@@ -326,8 +326,9 @@ void FileSelector::renderHeader() {
 
 		for (auto i = recentPlaces.begin(); i < recentPlaces.end(); i++) {
 			ImGui::PushID(&(*i));
+			auto name = i->filename().u8string();
 
-			if (ImGui::Selectable(i->filename().string().c_str())) {
+			if (ImGui::Selectable(reinterpret_cast<const char*>(name.c_str()))) {
 				setCurrentPath(*i);
 			}
 
@@ -389,7 +390,7 @@ void FileSelector::renderListView(ImVec2 size) {
 				ImGuiSelectableFlags_SpanAllColumns |
 				ImGuiSelectableFlags_AllowDoubleClick;
 
-			if (ImGui::Selectable(node.pathString.c_str(), node.isSelected, selectableFlags)) {
+			if (ImGui::Selectable(reinterpret_cast<const char*>(node.pathString.c_str()), node.isSelected, selectableFlags)) {
 				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 					if (node.isDirectory) {
 						setCurrentPath(node.path);
@@ -493,8 +494,7 @@ std::string FileSelector::Node::readableSize() {
 	mantissa = std::ceil(mantissa * 10.0) / 10.0;;
 	std::stringstream ss;
 	ss << std::fixed << std::setw(5) << std::setprecision(1) << std::setfill(' ') << mantissa;
-	ss << i[" KMGTPE"] << (i > 0 ? "B" : "");
-
+	ss << " KMGTPE"[i] << (i > 0 ? "B" : "");
 
 	return ss.str();
 }
@@ -554,7 +554,7 @@ bool FileSelector::isHidden(const std::filesystem::path& path) {
 	return (dwAttr == INVALID_FILE_ATTRIBUTES) ? false : ((dwAttr & FILE_ATTRIBUTE_HIDDEN) != 0);
 
 #else
-	std::string name = path.filename().string();
+	PathString name = path.filename().u8string();
     return name[0] == '.' && name != "." && name != "..";
 #endif
 }

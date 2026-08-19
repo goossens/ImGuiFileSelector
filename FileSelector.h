@@ -94,6 +94,13 @@ public:
 	inline const Labels& GetLabels() const { return labels; }
 
 private:
+#if __cplusplus >= 202002L
+		using PathString = std::u8string;
+
+	#else
+		using PathString = std::string;
+#endif
+
 	// configuration
 	bool showHiddenNodes = false;
 	std::filesystem::path currentPath;
@@ -139,8 +146,8 @@ private:
 	// a named path
 	struct NamedPath {
 		NamedPath() = default;
-		NamedPath(std::string name, std::filesystem::path path) : name(name), path(path) {}
-		std::string name;
+		NamedPath(PathString name, std::filesystem::path path) : name(name), path(path) {}
+		PathString name;
 		std::filesystem::path path;
 	};
 
@@ -155,7 +162,7 @@ private:
 		std::filesystem::file_time_type lastUpdate;
 		bool isSelected;
 
-		std::string pathString;
+		PathString pathString;
 		std::string sizeString;
 		std::string updateString;
 		std::wstring sortString;
