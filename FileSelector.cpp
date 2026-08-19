@@ -253,8 +253,9 @@ void FileSelector::renderFileDialog() {
 //
 
 void FileSelector::renderSideBar() {
-	ImGui::TextDisabled("Favorites");
-	ImGui::TextDisabled("Locations");
+	ImGui::TextDisabled("%s", labels.favorites.c_str());
+	ImGui::Spacing();
+	ImGui::TextDisabled("%s", labels.locations.c_str());
 }
 
 
@@ -413,10 +414,18 @@ void FileSelector::renderActionButtons() {
 	// a little vertical spacing
 	spacing();
 
+	// add ability to create a new folder
+	if (ImGui::Button(labels.newFolder.c_str())) {
+
+	}
+
+	ImGui::SameLine();
+
 	// right align buttons
 	auto availableSpace = ImGui::GetContentRegionAvail();
 	auto size = ImVec2((std::max(labels.ok.size(), labels.cancel.size()) + 2) * glyphSize.x, 0.0f);
 	auto pos = ImGui::GetCursorScreenPos();
+
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
 
 	// handle cancel button and shortcut

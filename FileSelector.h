@@ -24,12 +24,11 @@
 //
 //	This class implements a file selector dialog window for Dear ImGui. The layout
 //	for this dialog is inspired by MacOS but the look and feel is pure Dear ImGui.
-//	For now, the visualization is limited to List view.
+//	For now, the visualization is limited to the List view.
 //
 
 class FileSelector {
 public:
-	//
 	// singleton access
 	static inline FileSelector& Instance() {
 		static FileSelector singleton;
@@ -40,10 +39,12 @@ public:
 	FileSelector();
 
 	//	access options
-	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
-	inline const std::filesystem::path& GetCurrentPath() const { return currentPath; }
 	inline void SetShowHiddenNodes(bool value) { showHiddenNodes = value; }
 	inline bool GetShowHiddenNodes() const { return showHiddenNodes; }
+
+	// access state
+	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
+	inline const std::filesystem::path& GetCurrentPath() const { return currentPath; }
 
 	// start a file selector to open a single file
 	// returns true if selector is opened and false if a previous file selector is still active
@@ -61,8 +62,15 @@ public:
 	// returns true if selector is opened and false if a previous file selector is still active
 	bool SelectDirectory(const char* label);
 
-	// see if specified selector is open
-	// inline bool IsOpen(const char* id) const { return currentID == id; }
+	// see if selector is currently open
+	inline bool IsOpen() const { return type != Type::idle; }
+
+	// forcefully close the current selector
+	// this doesn't do anything if no selector is open
+	//
+	// it also doesn't need to be called when a selector completes
+	// as that is handle internally
+	inline void Close() { type = Type::idle; }
 
 	// render
 	bool Render(ImVec2 size=ImVec2(800, 400));
@@ -75,6 +83,9 @@ public:
 		std::string dateColumn;
 		std::string sizeColumn;
 		std::string search;
+		std::string favorites;
+		std::string locations;
+		std::string newFolder;
 		std::string recentPlaces;
 		std::string timeFormat;
 	};
@@ -94,6 +105,9 @@ private:
 		"Date",
 		"Size",
 		"search...",
+		"Favorites",
+		"Locations",
+		"New Folder",
 		"Recent Places",
 		"%b %d, %Y at %I:%M %p"
 	};

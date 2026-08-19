@@ -29,19 +29,42 @@ void Selector::render() {
 	ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
 	ImGui::SetNextWindowSize(ImGui::GetMainViewport()->Size);
 	ImGui::Begin("Main Window", nullptr, windowFlags);
-	// ImGui::PushFont(nullptr, 16.0f);
 
+	// shortcut to toggle Dear ImGui's debug window
 	if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Alt | ImGuiKey_I, ImGuiInputFlags_RouteAlways)) {
 		showDebugWindow = !showDebugWindow;
 	}
 
-	if (ImGui::Button("Open File")) {
-		selector.OpenFile("Select File to Open...", "");
+	// shortcut to toggle Dear ImGui's navigation mode
+	if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiMod_Alt | ImGuiKey_N, ImGuiInputFlags_RouteAlways)) {
+		auto& io = ImGui::GetIO();
+
+		if (io.ConfigFlags & ImGuiConfigFlags_NavEnableKeyboard) {
+			io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+			io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableGamepad;
+			io.ConfigNavCursorVisibleAuto = true;
+			io.ConfigNavCursorVisibleAlways = false;
+
+		} else {
+			io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+			io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+			io.ConfigNavCursorVisibleAuto = false;
+			io.ConfigNavCursorVisibleAlways = true;
+		}
 	}
 
-	selector.Render();
+	// trigger file selectors through a button
+	if (ImGui::Button("Open File")) {
+		selector.OpenFile("Select File to Open...");
+	}
 
-	// ImGui::PopFont();
+	// trigger file selectors through a shortcut
+	if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteAlways)) {
+		selector.OpenFile("Select File to Open...");
+	}
+
+	// render the selector each frame (if there is a need for it; handled internally)
+	selector.Render();
 	ImGui::End();
 
 	// show Dear ImGui metrics (if required)
