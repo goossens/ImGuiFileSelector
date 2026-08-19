@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <locale>
 #include <sstream>
 
 #include "FileSelector.h"
@@ -132,6 +133,13 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 
 	std::reverse(pathStack.begin(), pathStack.end());
 
+	// get system locale
+	std::locale locale("");
+
+	// get the facets for wide characters (wstring)
+	auto& ctypeFacet = std::use_facet<std::ctype<wchar_t>>(locale);
+	auto& collateFacet = std::use_facet<std::collate<wchar_t>>(locale);
+
 	// get directory entries
 	nodes.clear();
 
@@ -152,6 +160,11 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 				node.pathString = node.path.filename().string();
 				node.sizeString = node.isDirectory ? "    ---" : node.readableSize();
 				node.updateString = node.readableDate(labels.timeFormat);
+
+				// precalculate sort string
+				auto sortString = node.path.filename().generic_wstring();
+				ctypeFacet.tolower(sortString.data(), sortString.data() + sortString.size());
+				node.sortString = collateFacet.transform(sortString.data(), sortString.data() + sortString.size());
 			}
 		}
 	}
@@ -183,8 +196,8 @@ void FileSelector::sortNodes(ImS16 column, ImGuiSortDirection direction) {
 	std::sort(nodes.begin(), nodes.end(), [column, direction](const Node& left, const Node& right) {
 		if (column == 0) {
 			return (direction == ImGuiSortDirection_Ascending)
-				? left.pathString < right.pathString
-				: left.pathString > right.pathString;
+				? left.sortString < right.sortString
+				: left.sortString > right.sortString;
 
 		} else if (column == 1) {
 			return (direction == ImGuiSortDirection_Ascending)

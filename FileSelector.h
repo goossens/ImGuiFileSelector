@@ -158,6 +158,7 @@ private:
 		std::string pathString;
 		std::string sizeString;
 		std::string updateString;
+		std::wstring sortString;
 
 		std::string readableSize();
 		std::string readableDate(const std::string& format);
