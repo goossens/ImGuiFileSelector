@@ -214,7 +214,7 @@ bool FileSelector::refreshNodes(const std::filesystem::path& path) {
 		nodes = tmpNodes;
 		lastDirectoryWriteTime = std::filesystem::last_write_time(path);
 
-	} catch (const std::filesystem::filesystem_error& e) {
+	} catch (const std::filesystem::filesystem_error&) {
 		// create error message (handle path encoding)
 		auto u8String = path.u8string();
 		std::string utf8String(u8String.begin(), u8String.end());
