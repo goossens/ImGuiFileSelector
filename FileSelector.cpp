@@ -57,7 +57,7 @@ bool FileSelector::OpenFile(const char* label, const std::string&) {
 //	FileSelector::Render
 //
 
-bool FileSelector::Render(ImVec2 size) {
+bool FileSelector::Render() {
 	// don't do anything if a file selector is not open yet
 	if (type == Type::idle) {
 		return false;
@@ -69,16 +69,28 @@ bool FileSelector::Render(ImVec2 size) {
 		isOpen = true;
 	}
 
-	// open the popup
-	ImGui::SetNextWindowSize(size, ImGuiCond_FirstUseEver);
+	// render the selector popup
+	auto viewPort = ImGui::GetMainViewport();
+	ImVec2 center = viewPort->GetCenter();
+	ImVec2 maxSize = viewPort->Size;
+	ImVec2 minSize = maxSize * 0.6f;
+	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+	ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
 
-	if (ImGui::BeginPopupModal(currentLabel.c_str(), nullptr, ImGuiWindowFlags_NoScrollbar)) {
+	ImGuiWindowFlags windowFlags =
+		ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoCollapse |
+		ImGuiWindowFlags_NoScrollbar;
+
+	if (ImGui::BeginPopupModal(currentLabel.c_str(), nullptr, windowFlags)) {
 		renderFileDialog();
 
+		// see if user performed action (selection or cancel)
 		if (hasAction) {
-			// handle
+			// handle open file scenario
 			if (type == Type::openFile && !selectedPath.empty()) {
-				// get director of selected path
+				// user selected a file
+				// get directory of selected file
 				auto directory = selectedPath.parent_path();
 
 				// remove old recent places entry to avoid duplicates
@@ -93,11 +105,15 @@ bool FileSelector::Render(ImVec2 size) {
 				recentPlaces.emplace(recentPlaces.begin(), directory);
 			}
 
+			// close selector popup
 			ImGui::CloseCurrentPopup();
 			currentLabel.clear();
 			type = Type::idle;
 			isOpen = false;
 		}
+
+		// handle possible popups
+		renderPopups();
 
 		ImGui::EndPopup();
 	}
@@ -119,6 +135,14 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 		return false;
 	}
 
+	// try to refresh the path's node list and check for errors
+	if (!refreshNodes(path)) {
+		return false;
+	}
+
+	// sort directory entries
+	sortNodes(sortColumn, sortDirection);
+
 	// save new path
 	currentPath = canonicalPath;
 
@@ -133,45 +157,6 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 
 	std::reverse(pathStack.begin(), pathStack.end());
 
-	// get system locale
-	std::locale locale("");
-
-	// get the facets for wide characters (wstring)
-	auto& ctypeFacet = std::use_facet<std::ctype<wchar_t>>(locale);
-	auto& collateFacet = std::use_facet<std::collate<wchar_t>>(locale);
-
-	// get directory entries
-	nodes.clear();
-
-	for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
-		if (entry.is_regular_file() || entry.is_directory()) {
-			if (showHiddenNodes || !isHidden(entry.path())) {
-				// create a new node
-				auto& node = nodes.emplace_back();
-
-				// get node metadata and set state
-				node.path = entry.path();
-				node.isDirectory = entry.is_directory();
-				node.size = entry.is_regular_file() ? entry.file_size() : 0;
-				node.lastUpdate = entry.last_write_time();
-				node.isSelected = false;
-
-				// precalculate strings for faster rendering
-				node.pathString = node.path.filename().u8string();
-				node.sizeString = node.isDirectory ? "    ---" : node.readableSize();
-				node.updateString = node.readableDate(labels.timeFormat);
-
-				// precalculate sort string
-				auto sortString = node.path.filename().generic_wstring();
-				ctypeFacet.tolower(sortString.data(), sortString.data() + sortString.size());
-				node.sortString = collateFacet.transform(sortString.data(), sortString.data() + sortString.size());
-			}
-		}
-	}
-
-	// sort directory entries
-	sortNodes(sortColumn, sortDirection);
-
 	// add to history (if required)
 	if (addHistory) {
 		pathHistory.resize(historyIndex + 1);
@@ -180,6 +165,64 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 	}
 
 	return true;
+}
+
+
+//
+//	FileSelector::refreshNodes
+//
+
+bool FileSelector::refreshNodes(const std::filesystem::path& path) {
+	// we load to a temporary left first so we can detect errors
+	std::vector<Node> tmpNodes;
+	bool success = true;
+
+	// get system locale
+	std::locale locale("");
+
+	// get the facets for wide characters (wstring)
+	auto& ctypeFacet = std::use_facet<std::ctype<wchar_t>>(locale);
+	auto& collateFacet = std::use_facet<std::collate<wchar_t>>(locale);
+
+	try {
+		for (const auto& entry : std::filesystem::directory_iterator(path)) {
+			if (entry.is_regular_file() || entry.is_directory()) {
+				if (showHiddenNodes || !isHidden(entry.path())) {
+					// create a new node
+					auto& node = tmpNodes.emplace_back();
+
+					// get node metadata and set state
+					node.path = entry.path();
+					node.isDirectory = entry.is_directory();
+					node.size = entry.is_regular_file() ? entry.file_size() : 0;
+					node.lastUpdate = entry.last_write_time();
+					node.isSelected = false;
+
+					// precalculate strings for faster rendering
+					node.pathString = node.path.filename().u8string();
+					node.sizeString = node.isDirectory ? "    ---" : node.readableSize();
+					node.updateString = node.readableDate(labels.timeFormat);
+
+					// precalculate sort string
+					auto sortString = node.path.filename().generic_wstring();
+					ctypeFacet.tolower(sortString.data(), sortString.data() + sortString.size());
+					node.sortString = collateFacet.transform(sortString.data(), sortString.data() + sortString.size());
+				}
+			}
+		}
+
+		nodes = tmpNodes;
+		lastDirectoryWriteTime = std::filesystem::last_write_time(path);
+
+	} catch (const std::filesystem::filesystem_error& e) {
+		// create error message (handle path encoding)
+		auto u8String = path.u8string();
+		std::string utf8String(u8String.begin(), u8String.end());
+		setErrorMessage(labels.cantAccess + " [" + utf8String + "]");
+		success = false;
+	}
+
+	return success;
 }
 
 
@@ -469,6 +512,29 @@ void FileSelector::renderActionButtons() {
 
 
 //
+//	FileSelector::renderPopups
+//
+
+void FileSelector::renderPopups() {
+	// handle error window
+	if (openErrorMessage) {
+		ImGui::OpenPopup(labels.errorWindow.c_str());
+		openErrorMessage = false;
+	}
+
+	if (ImGui::BeginPopupModal(labels.errorWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::TextUnformatted(errorMessage.c_str());
+
+		if (ImGui::Button(labels.ok.c_str())) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+
+//
 //	FileSelector::spacing
 //
 
@@ -491,7 +557,7 @@ std::string FileSelector::Node::readableSize() {
 		i++;
 	}
 
-	mantissa = std::ceil(mantissa * 10.0) / 10.0;;
+	mantissa = std::ceil(mantissa * 10.0) / 10.0;
 	std::stringstream ss;
 	ss << std::fixed << std::setw(5) << std::setprecision(1) << std::setfill(' ') << mantissa;
 	ss << " KMGTPE"[i] << (i > 0 ? "B" : "");

@@ -73,7 +73,7 @@ public:
 	inline void Close() { type = Type::idle; }
 
 	// render
-	bool Render(ImVec2 size=ImVec2(800, 400));
+	bool Render();
 
 	// internationalization support
 	struct Labels {
@@ -87,6 +87,9 @@ public:
 		std::string locations;
 		std::string newFolder;
 		std::string recentPlaces;
+		std::string confirmationWindow;
+		std::string errorWindow;
+		std::string cantAccess;
 		std::string timeFormat;
 	};
 
@@ -116,6 +119,9 @@ private:
 		"Locations",
 		"New Folder",
 		"Recent Places",
+		"Confirmation...",
+		"Error...",
+		"Can't access",
 		"%b %d, %Y at %I:%M %p"
 	};
 
@@ -172,6 +178,11 @@ private:
 	};
 
 	std::vector<Node> nodes;
+	std::filesystem::file_time_type lastDirectoryWriteTime;
+
+	// error handling
+	std::string errorMessage;
+	bool openErrorMessage = false;
 
 	// work variables
 	float frameHeight;
@@ -180,13 +191,23 @@ private:
 
 	// local functions
 	bool setCurrentPath(const std::filesystem::path& path, bool addHistory=true);
+	bool refreshNodes(const std::filesystem::path& path);
 	void sortNodes(ImS16 column, ImGuiSortDirection direction);
+
 	void clearSelections();
+
 	void renderFileDialog();
 	void renderSideBar();
 	void renderHeader();
 	void renderListView(ImVec2 size);
 	void renderActionButtons();
+	void renderPopups();
 	void spacing();
+
 	bool isHidden(const std::filesystem::path & path);
+
+	inline void setErrorMessage(const std::string& msg) {
+		errorMessage = msg;
+		openErrorMessage = true;
+	}
 };
