@@ -352,12 +352,10 @@ void FileSelector::renderHeader() {
 	ImGui::SetNextItemWidth(availableSpace.x * 0.4f);
 
 	if (ImGui::BeginCombo("###pathSelector", pathStack[0].name.c_str())) {
-		bool dummy = false;
-
 		for (auto i = pathStack.begin() + 1; i < pathStack.end(); i++) {
 			ImGui::PushID(&(*i));
 
-			if (ImGui::Selectable(reinterpret_cast<const char*>(i->name.c_str()), dummy)) {
+			if (ImGui::Selectable(reinterpret_cast<const char*>(i->name.c_str()))) {
 				setCurrentPath(i->path);
 			}
 
@@ -447,6 +445,13 @@ void FileSelector::renderListView(ImVec2 size) {
 					clearSelections();
 					node.isSelected = true;
 				}
+			}
+
+			if (ImGui::BeginPopupContextItem()) {
+				if (ImGui::MenuItem(labels.rename.c_str()))   {}
+				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {}
+				if (ImGui::MenuItem(labels.duplicate.c_str())) {}
+				ImGui::EndPopup();
 			}
 
 			// show date

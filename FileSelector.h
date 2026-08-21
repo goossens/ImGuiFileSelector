@@ -90,6 +90,9 @@ public:
 		std::string confirmationWindow;
 		std::string errorWindow;
 		std::string cantAccess;
+		std::string rename;
+		std::string duplicate;
+		std::string moveToTrash;
 		std::string timeFormat;
 	};
 
@@ -122,6 +125,9 @@ private:
 		"Confirmation...",
 		"Error...",
 		"Can't access",
+		"Rename",
+		"Move to Trash",
+		"Duplicate",
 		"%b %d, %Y at %I:%M %p"
 	};
 
