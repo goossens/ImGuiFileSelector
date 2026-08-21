@@ -196,7 +196,7 @@ private:
 	ImVec2 itemSpacing;
 
 	// local functions
-	bool setCurrentPath(const std::filesystem::path& path, bool addHistory=true);
+	bool setCurrentPath(const std::filesystem::path path, bool addHistory=true);
 	bool refreshNodes(const std::filesystem::path& path);
 	void sortNodes(ImS16 column, ImGuiSortDirection direction);
 

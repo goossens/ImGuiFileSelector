@@ -122,12 +122,11 @@ bool FileSelector::Render() {
 }
 
 
-
 //
 //	FileSelector::setCurrentPath
 //
 
-bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHistory) {
+bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHistory) {
 	auto canonicalPath = std::filesystem::canonical(path);
 
 	// sanity check
@@ -173,7 +172,7 @@ bool FileSelector::setCurrentPath(const std::filesystem::path& path, bool addHis
 //
 
 bool FileSelector::refreshNodes(const std::filesystem::path& path) {
-	// we load to a temporary left first so we can detect errors
+	// we load to a temporary list first so we can detect errors
 	std::vector<Node> tmpNodes;
 	bool success = true;
 
