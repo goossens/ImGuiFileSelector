@@ -188,6 +188,7 @@ private:
 
 	// error handling
 	std::string errorMessage;
+	std::string errorDetails;
 	bool openErrorMessage = false;
 
 	// work variables
@@ -212,8 +213,9 @@ private:
 
 	bool isHidden(const std::filesystem::path & path);
 
-	inline void setErrorMessage(const std::string& msg) {
-		errorMessage = msg;
+	inline void setErrorMessage(const std::string& message, const std::string& details="") {
+		errorMessage = message;
+		errorDetails = details;
 		openErrorMessage = true;
 	}
 };

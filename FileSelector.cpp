@@ -213,11 +213,11 @@ bool FileSelector::refreshNodes(const std::filesystem::path& path) {
 		nodes = tmpNodes;
 		lastDirectoryWriteTime = std::filesystem::last_write_time(path);
 
-	} catch (const std::filesystem::filesystem_error&) {
+	} catch (const std::filesystem::filesystem_error& e) {
 		// create error message (handle path encoding)
 		auto u8String = path.u8string();
 		std::string utf8String(u8String.begin(), u8String.end());
-		setErrorMessage(labels.cantAccess + " [" + utf8String + "]");
+		setErrorMessage(labels.cantAccess + " [" + utf8String + "]", e.what());
 		success = false;
 	}
 
@@ -528,6 +528,10 @@ void FileSelector::renderPopups() {
 
 	if (ImGui::BeginPopupModal(labels.errorWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		ImGui::TextUnformatted(errorMessage.c_str());
+
+		if (errorDetails.size()) {
+			ImGui::SetItemTooltip("%s", errorDetails.c_str());
+		}
 
 		if (ImGui::Button(labels.ok.c_str())) {
 			ImGui::CloseCurrentPopup();
