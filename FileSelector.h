@@ -48,19 +48,19 @@ public:
 
 	// start a file selector to open a single file
 	// returns true if selector is opened and false if a previous file selector is still active
-	bool OpenFile(const char* label, const std::string& filter="*");
+	bool OpenFile(const std::string& filter="*");
 
 	// start a file selector to pick a path to save a file to
 	// returns true if selector is opened and false if a previous file selector is still active
-	bool SaveAs(const char* label);
+	bool SaveAs();
 
 	// start a file selector to select one or more files
 	// returns true if selector is opened and false if a previous file selector is still active
-	bool SelectFiles(const char* label, const std::string& filter="*");
+	bool SelectFiles(const std::string& filter="*");
 
 	// start a file selector to select a directory
 	// returns true if selector is opened and false if a previous file selector is still active
-	bool SelectDirectory(const char* label);
+	bool SelectDirectory();
 
 	// see if selector is currently open
 	inline bool IsOpen() const { return type != Type::idle; }
@@ -72,7 +72,8 @@ public:
 	// as that is handle internally
 	inline void Close() { type = Type::idle; }
 
-	// render
+	// render the file selector widget
+	// it is safe to call this every frame as it's a NOOP if no selectors are active
 	bool Render();
 
 	// internationalization support
@@ -141,7 +142,6 @@ private:
 	} type = Type::idle;
 
 	std::filesystem::path selectedPath;
-	std::string currentLabel;
 	bool isOpen;
 	bool hasAction;
 

@@ -31,7 +31,7 @@ FileSelector::FileSelector() {
 //	FileSelector::OpenFile
 //
 
-bool FileSelector::OpenFile(const char* label, const std::string&) {
+bool FileSelector::OpenFile(const std::string&) {
 	// don't do anything if a file selector is already open
 	if (type != Type::idle) {
 		return false;
@@ -39,7 +39,6 @@ bool FileSelector::OpenFile(const char* label, const std::string&) {
 
 	// remember information and reset state
 	type = Type::openFile;
-	currentLabel = label;
 	selectedPath.clear();
 	isOpen = false;
 	hasAction = false;
@@ -65,7 +64,7 @@ bool FileSelector::Render() {
 
 	// ask popup to be opened (if required)
 	if (!isOpen) {
-		ImGui::OpenPopup(currentLabel.c_str());
+		ImGui::OpenPopup("ImGuiFileSelector");
 		isOpen = true;
 	}
 
@@ -78,11 +77,12 @@ bool FileSelector::Render() {
 	ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
 
 	ImGuiWindowFlags windowFlags =
+		ImGuiWindowFlags_NoTitleBar |
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse |
 		ImGuiWindowFlags_NoScrollbar;
 
-	if (ImGui::BeginPopupModal(currentLabel.c_str(), nullptr, windowFlags)) {
+	if (ImGui::BeginPopupModal("###ImGuiFileSelector", nullptr, windowFlags)) {
 		renderFileDialog();
 
 		// see if user performed action (selection or cancel)
@@ -107,7 +107,6 @@ bool FileSelector::Render() {
 
 			// close selector popup
 			ImGui::CloseCurrentPopup();
-			currentLabel.clear();
 			type = Type::idle;
 			isOpen = false;
 		}
@@ -475,12 +474,13 @@ void FileSelector::renderActionButtons() {
 	// a little vertical spacing
 	spacing();
 
-	// add ability to create a new folder
-	if (ImGui::Button(labels.newFolder.c_str())) {
+	// add ability to create a new folder (if required)
+	if (type == Type::saveAs){
+		if (ImGui::Button(labels.newFolder.c_str())) {
+		}
 
+		ImGui::SameLine();
 	}
-
-	ImGui::SameLine();
 
 	// right align buttons
 	auto availableSpace = ImGui::GetContentRegionAvail();
