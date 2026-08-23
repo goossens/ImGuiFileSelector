@@ -23,7 +23,12 @@
 //
 
 FileSelector::FileSelector() {
+	// set current path to OS working directory
 	setCurrentPath(std::filesystem::current_path(), false);
+
+	// add favorites and locations (OS-specific)
+	addFavorites();
+	addLocations();
 }
 
 
@@ -32,23 +37,34 @@ FileSelector::FileSelector() {
 //
 
 bool FileSelector::OpenFile(const std::string&) {
-	// don't do anything if a file selector is already open
-	if (type != Type::idle) {
-		return false;
-	}
+	return openDialog(Type::openFile);
+}
 
-	// remember information and reset state
-	type = Type::openFile;
-	selectedPath.clear();
-	isOpen = false;
-	hasAction = false;
-	clearSelections();
 
-	pathHistory.clear();
-	pathHistory.emplace_back(currentPath);
-	historyIndex = 0;
+//
+//	FileSelector::SaveAs
+//
 
-	return true;
+bool FileSelector::SaveAs() {
+	return openDialog(Type::saveAs);
+}
+
+
+//
+//	FileSelector::SelectFiles
+//
+
+bool FileSelector::SelectFiles(const std::string&) {
+	return openDialog(Type::selectFiles);
+}
+
+
+//
+//	FileSelector::SelectDirectory
+//
+
+bool FileSelector::SelectDirectory() {
+	return openDialog(Type::selectDirectory);
 }
 
 
@@ -57,7 +73,7 @@ bool FileSelector::OpenFile(const std::string&) {
 //
 
 bool FileSelector::Render() {
-	// don't do anything if a file selector is not open yet
+	// don't do anything if a file selector isn't open yet
 	if (type == Type::idle) {
 		return false;
 	}
@@ -83,6 +99,7 @@ bool FileSelector::Render() {
 		ImGuiWindowFlags_NoScrollbar;
 
 	if (ImGui::BeginPopupModal("###ImGuiFileSelector", nullptr, windowFlags)) {
+		hasAction = false;
 		renderFileDialog();
 
 		// see if user performed action (selection or cancel)
@@ -118,6 +135,28 @@ bool FileSelector::Render() {
 	}
 
 	return hasAction;
+}
+
+
+//
+//	FileSelector::openDialog
+//
+
+bool FileSelector::openDialog(Type openType) {
+	if (type == Type::idle) {
+		type = openType;
+		selectedPath.clear();
+		isOpen = false;
+		clearSelections();
+
+		pathHistory.clear();
+		pathHistory.emplace_back(currentPath);
+		historyIndex = 0;
+		return true;
+
+	} else {
+		return false;
+	}
 }
 
 
@@ -307,9 +346,55 @@ void FileSelector::renderFileDialog() {
 //
 
 void FileSelector::renderSideBar() {
-	ImGui::TextDisabled("%s", labels.favorites.c_str());
-	ImGui::Spacing();
-	ImGui::TextDisabled("%s", labels.locations.c_str());
+	// render favorites (if required)
+	if (favorites.size()) {
+		ImGui::TextDisabled("%s", labels.favorites.c_str());
+		ImGui::Indent();
+
+		for (auto& favorite : favorites) {
+			ImGui::PushID(&favorite);
+
+			if (ImGui::Selectable(reinterpret_cast<const char*>(favorite.name.c_str()))) {
+				setCurrentPath(favorite.path);
+			}
+
+			ImGui::PopID();
+		}
+
+		ImGui::Unindent();
+		ImGui::Spacing();
+	}
+
+	// render iCloud Drive (if required)
+	if (!icloudPath.empty()) {
+		ImGui::TextDisabled("iCloud");
+		ImGui::Indent();
+
+		if (ImGui::Selectable("iCloud Drive")) {
+			setCurrentPath(icloudPath);
+		}
+
+		ImGui::Unindent();
+		ImGui::Spacing();
+	}
+
+	// render locations (if required)
+	if (locations.size()) {
+		ImGui::TextDisabled("%s", labels.locations.c_str());
+		ImGui::Indent();
+
+		for (auto& location : locations) {
+			ImGui::PushID(&location);
+
+			if (ImGui::Selectable(reinterpret_cast<const char*>(location.name.c_str()))) {
+				setCurrentPath(location.path);
+			}
+
+			ImGui::PopID();
+		}
+
+		ImGui::Unindent();
+	}
 }
 
 
@@ -553,6 +638,45 @@ void FileSelector::spacing() {
 
 
 //
+//	FileSelector::addFavorites
+//
+
+void FileSelector::addFavorites() {
+	auto home = getHome();
+
+	if (!home.empty()) {
+		// these only get added when they exist
+		addFavorite("Home", home);
+		addFavorite("Desktop", home / "Desktop");
+		addFavorite("Documents", home / "Documents");
+		addFavorite("Downloads", home / "Downloads");
+		addFavorite("Movies", home / "Movies");
+		addFavorite("Music", home / "Music");
+		addFavorite("Pictures", home / "Pictures");
+		addFavorite("OneDrive", home / "OneDrive");
+
+		// special treatment for iCloud (just for hardcore Apple princesses)
+		auto tmpPath = home / "Library" / "Mobile Documents" / "com~apple~CloudDocs";
+
+		if (std::filesystem::exists(tmpPath)) {
+			icloudPath = tmpPath;
+		}
+	}
+}
+
+
+//
+//	FileSelector::addFavorite
+//
+
+void FileSelector::addFavorite(const std::string& name, const std::filesystem::path& path) {
+	if (std::filesystem::exists(path)) {
+		favorites.emplace_back(name, path);
+	}
+}
+
+
+//
 //	FileSelector::Node::readableSize
 //
 
@@ -602,7 +726,7 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 
 
 //
-//	FileSelector::isHidden
+//	Operating System specific functions
 //
 
 #ifdef _WIN32
@@ -616,7 +740,38 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 #undef APIENTRY
 #endif
 #include <windows.h>
+#include <shlobj.h>
+
+#else
+#include <pwd.h>
+#include <unistd.h>
 #endif
+
+
+//
+//	FileSelector::addLocations
+//
+
+void FileSelector::addLocations() {
+#if __APPLE__
+	std::filesystem::path volumes{"/Volumes"};
+
+	for (const auto& entry : std::filesystem::directory_iterator(volumes)) {
+		auto path = entry.path();
+		locations.emplace_back(path.filename(), std::filesystem::canonical(path));
+	}
+
+#elif defined(_WIN32)
+
+#else
+
+#endif
+}
+
+
+//
+//	FileSelector::isHidden
+//
 
 bool FileSelector::isHidden(const std::filesystem::path& path) {
 	if (path.empty()) {
@@ -631,4 +786,53 @@ bool FileSelector::isHidden(const std::filesystem::path& path) {
 	PathString name = path.filename().u8string();
     return name[0] == '.' && name != "." && name != "..";
 #endif
+}
+
+
+//
+//	FileSelector::getHome
+//
+
+std::filesystem::path FileSelector::getHome() {
+#ifdef _WIN32
+	PWSTR wcharPath = nullptr;
+
+	// preferred Windows API over getenv("USERPROFILE")
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Profile, KF_FLAG_DEFAULT, nullptr, &wcharPath))) {
+		std::filesystem::path home(wcharPath);
+		CoTaskMemFree(wcharPath);
+		return home;
+	}
+
+	// fallback to environment variables if API fails
+	auto userProfile = std::getenv("USERPROFILE");
+
+	if (userProfile) {
+		return std::filesystem::path(userProfile);
+	}
+
+	auto homeDrive = std::getenv("HOMEDRIVE");
+	auto homePath = std::getenv("HOMEPATH");
+
+	if (homeDrive && homePath) {
+		return std::filesystem::path(std::string(homeDrive) + std::string(homePath));
+	}
+
+#else
+	auto home = std::getenv("HOME");
+
+	if (home) {
+		return std::filesystem::path(home);
+	}
+
+	// fallback: read the password database record for the current UID
+	struct passwd* pw = getpwuid(geteuid());
+
+	if (pw && pw->pw_dir) {
+		return std::filesystem::path(pw->pw_dir);
+	}
+
+#endif
+
+	return std::filesystem::path();
 }

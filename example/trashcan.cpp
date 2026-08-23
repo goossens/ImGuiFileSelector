@@ -22,10 +22,17 @@
 #include <objc/runtime.h>
 #include <objc/message.h>
 
+extern "C" {
+    void *objc_autoreleasePoolPush(void);
+    void objc_autoreleasePoolPop(void* pool);
+}
+
 bool movePathToTrashCan(const std::filesystem::path& path) {
 	// determine absolute path with .. and symbolic links resolved
 	auto canonicalPath = std::filesystem::canonical(path);
 	auto canonicalString = canonicalPath.string();
+
+	void* pool = objc_autoreleasePoolPush();
 
 	Class NSStringClass = objc_getClass("NSString");
 	SEL stringWithUTF8StringSel = sel_registerName("stringWithUTF8String:");
@@ -40,7 +47,10 @@ bool movePathToTrashCan(const std::filesystem::path& path) {
 	id nsurl = ((id(*)(Class, SEL, id)) objc_msgSend)(NSURLClass, fileURLWithPathSel, pathString);
 
 	SEL trashItemAtURLSel = sel_registerName("trashItemAtURL:resultingItemURL:error:");
-	return ((BOOL(*)(id, SEL, id, id, id)) objc_msgSend)(fileManager, trashItemAtURLSel, nsurl, nil, nil);
+	auto result = ((BOOL(*)(id, SEL, id, id, id)) objc_msgSend)(fileManager, trashItemAtURLSel, nsurl, nil, nil);
+
+	objc_autoreleasePoolPop(pool);
+	return result;
 }
 
 

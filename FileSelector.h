@@ -46,20 +46,20 @@ public:
 	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
 	inline const std::filesystem::path& GetCurrentPath() const { return currentPath; }
 
-	// start a file selector to open a single file
-	// returns true if selector is opened and false if a previous file selector is still active
+	// start a selector to open a single file
+	// returns true if selector is opened and false if a previous selector is still active
 	bool OpenFile(const std::string& filter="*");
 
-	// start a file selector to pick a path to save a file to
-	// returns true if selector is opened and false if a previous file selector is still active
+	// start a selector to pick a path to save content to
+	// returns true if selector is opened and false if a previous selector is still active
 	bool SaveAs();
 
-	// start a file selector to select one or more files
-	// returns true if selector is opened and false if a previous file selector is still active
+	// start a selector to select one or more files
+	// returns true if selector is opened and false if a previous selector is still active
 	bool SelectFiles(const std::string& filter="*");
 
-	// start a file selector to select a directory
-	// returns true if selector is opened and false if a previous file selector is still active
+	// start a selector to select a directory
+	// returns true if selector is opened and false if a previous selector is still active
 	bool SelectDirectory();
 
 	// see if selector is currently open
@@ -186,6 +186,11 @@ private:
 	std::vector<Node> nodes;
 	std::filesystem::file_time_type lastDirectoryWriteTime;
 
+	// favorites and locations
+	std::vector<NamedPath> favorites;
+	std::filesystem::path icloudPath;
+	std::vector<NamedPath> locations;
+
 	// error handling
 	std::string errorMessage;
 	std::string errorDetails;
@@ -197,6 +202,7 @@ private:
 	ImVec2 itemSpacing;
 
 	// local functions
+	bool openDialog(Type type);
 	bool setCurrentPath(const std::filesystem::path path, bool addHistory=true);
 	bool refreshNodes(const std::filesystem::path& path);
 	void sortNodes(ImS16 column, ImGuiSortDirection direction);
@@ -211,6 +217,10 @@ private:
 	void renderPopups();
 	void spacing();
 
+	void addFavorites();
+	void addFavorite(const std::string& name, const std::filesystem::path& path);
+	void addLocations();
+
 	bool isHidden(const std::filesystem::path & path);
 
 	inline void setErrorMessage(const std::string& message, const std::string& details="") {
@@ -218,4 +228,6 @@ private:
 		errorDetails = details;
 		openErrorMessage = true;
 	}
+
+	std::filesystem::path getHome();
 };
