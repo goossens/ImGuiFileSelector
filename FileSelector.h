@@ -191,6 +191,10 @@ private:
 	std::filesystem::path icloudPath;
 	std::vector<NamedPath> locations;
 
+	bool favoritesVisible = true;
+	bool icloudDriveVisible = true;
+	bool locationsVisible = true;
+
 	// error handling
 	std::string errorMessage;
 	std::string errorDetails;
@@ -215,6 +219,7 @@ private:
 	void renderListView(ImVec2 size);
 	void renderActionButtons();
 	void renderPopups();
+	bool header(const char* label, bool* state);
 	void spacing();
 
 	void addFavorites();

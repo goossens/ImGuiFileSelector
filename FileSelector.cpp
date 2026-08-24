@@ -348,52 +348,63 @@ void FileSelector::renderFileDialog() {
 void FileSelector::renderSideBar() {
 	// render favorites (if required)
 	if (favorites.size()) {
-		ImGui::TextDisabled("%s", labels.favorites.c_str());
-		ImGui::Indent();
+		header(labels.favorites.c_str(), &favoritesVisible);
 
-		for (auto& favorite : favorites) {
-			ImGui::PushID(&favorite);
+		if (favoritesVisible) {
+			ImGui::Indent();
 
-			if (ImGui::Selectable(reinterpret_cast<const char*>(favorite.name.c_str()))) {
-				setCurrentPath(favorite.path);
+			for (auto& favorite : favorites) {
+				ImGui::PushID(&favorite);
+
+				if (ImGui::Selectable(reinterpret_cast<const char*>(favorite.name.c_str()))) {
+					setCurrentPath(favorite.path);
+				}
+
+				ImGui::PopID();
 			}
 
-			ImGui::PopID();
+			ImGui::Unindent();
 		}
 
-		ImGui::Unindent();
 		ImGui::Spacing();
 	}
 
 	// render iCloud Drive (if required)
 	if (!icloudPath.empty()) {
-		ImGui::TextDisabled("iCloud");
-		ImGui::Indent();
+		header("iCloud", &icloudDriveVisible);
 
-		if (ImGui::Selectable("iCloud Drive")) {
-			setCurrentPath(icloudPath);
+		if (icloudDriveVisible) {
+			ImGui::Indent();
+
+			if (ImGui::Selectable("iCloud Drive")) {
+				setCurrentPath(icloudPath);
+			}
+
+			ImGui::Unindent();
 		}
 
-		ImGui::Unindent();
 		ImGui::Spacing();
 	}
 
 	// render locations (if required)
 	if (locations.size()) {
-		ImGui::TextDisabled("%s", labels.locations.c_str());
-		ImGui::Indent();
+		header(labels.locations.c_str(), &locationsVisible);
 
-		for (auto& location : locations) {
-			ImGui::PushID(&location);
+		if (locationsVisible) {
+			ImGui::Indent();
 
-			if (ImGui::Selectable(reinterpret_cast<const char*>(location.name.c_str()))) {
-				setCurrentPath(location.path);
+			for (auto& location : locations) {
+				ImGui::PushID(&location);
+
+				if (ImGui::Selectable(reinterpret_cast<const char*>(location.name.c_str()))) {
+					setCurrentPath(location.path);
+				}
+
+				ImGui::PopID();
 			}
 
-			ImGui::PopID();
+			ImGui::Unindent();
 		}
-
-		ImGui::Unindent();
 	}
 }
 
@@ -628,12 +639,48 @@ void FileSelector::renderPopups() {
 
 
 //
+//	FileSelector::header
+//
+
+bool FileSelector::header(const char* label, bool* state) {
+	// determine position and space
+	auto pos = ImGui::GetCursorScreenPos();
+	auto size = ImGui::GetContentRegionAvail();
+	size.y = glyphSize.y;
+
+	// run button action
+	bool changed = ImGui::InvisibleButton(label, size);
+
+	if (changed) {
+		*state = !*state;
+	}
+
+	// render label and state
+	auto drawList = ImGui::GetWindowDrawList();
+	auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+	drawList->AddText(pos, color, label);
+
+	if (ImGui::IsItemHovered()) {
+		auto right = pos + ImVec2(size.x - glyphSize.x, 0.0f);
+		ImVec2 p1 = ImVec2(right + ImVec2(0.0f, glyphSize.y * 0.3f));
+		ImVec2 p2 = right + (*state ? ImVec2(glyphSize.x * 0.5f, glyphSize.y * 0.7f) : ImVec2(glyphSize.x, glyphSize.y * 0.5f));
+		ImVec2 p3 = right + (*state ? ImVec2(glyphSize.x, glyphSize.y * 0.3f) : ImVec2(0.0f, glyphSize.y * 0.7f));
+		drawList->AddLine(p1, p2, color);
+		drawList->AddLine(p2, p3, color);
+	}
+
+	// run result
+	return changed;
+}
+
+
+//
 //	FileSelector::spacing
 //
 
 void FileSelector::spacing() {
 	auto pos = ImGui::GetCursorScreenPos();
-	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + ImGui::GetFrameHeight() * 0.4f));
+	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + frameHeight * 0.4f));
 }
 
 
