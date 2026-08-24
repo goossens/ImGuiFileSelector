@@ -64,7 +64,7 @@ int example() {
 	// create application window
 	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"ImGui Example", nullptr };
 	::RegisterClassExW(&wc);
-	HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Toastr-like Notification Example", WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * mainScale), (int)(800 * mainScale), nullptr, nullptr, wc.hInstance, nullptr);
+	HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"File Selector Example", WS_OVERLAPPEDWINDOW, 100, 100, (int)(1280 * mainScale), (int)(800 * mainScale), nullptr, nullptr, wc.hInstance, nullptr);
 
 	// initialize Direct3D
 	if (!CreateDeviceD3D(hwnd)) {

@@ -43,7 +43,7 @@ int example() {
 	float mainScale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
 
 	SDL_Window* window = SDL_CreateWindow(
-		"Toastr-like Notification Example",
+		"File Selector Example",
 		static_cast<int>(1280 * mainScale),
 		static_cast<int>(720 * mainScale),
 		windowFlags);
