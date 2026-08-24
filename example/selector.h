@@ -14,6 +14,8 @@
 
 #include "../FileSelector.h"
 
+#include "logger.h"
+
 
 //
 //  Selector
@@ -27,5 +29,6 @@ public:
 private:
 	// properties
 	FileSelector selector;
+	Logger logger;
 	bool showDebugWindow = false;
 };

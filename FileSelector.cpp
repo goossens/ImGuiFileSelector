@@ -538,6 +538,7 @@ void FileSelector::renderListView(ImVec2 size) {
 				} else {
 					clearSelections();
 					node.isSelected = true;
+					selectedPath = node.path;
 				}
 			}
 
@@ -586,11 +587,8 @@ void FileSelector::renderActionButtons() {
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
 
 	// handle cancel button and shortcut
-	if (ImGui::Button(labels.cancel.c_str(), size)) {
-		hasAction = true;
-	}
-
-	if (ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
+	if (ImGui::Button(labels.cancel.c_str(), size) ||ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
+		selectedPath.clear();
 		hasAction = true;
 	}
 

@@ -72,8 +72,13 @@ public:
 	// as that is handle internally
 	inline void Close() { type = Type::idle; }
 
+	// get selection status and actual selection(s)
+	inline bool HasSelectedPath() const { return !selectedPath.empty(); }
+	inline const std::filesystem::path& GetSelectedPath() const { return selectedPath; }
+
 	// render the file selector widget
 	// it is safe to call this every frame as it's a NOOP if no selectors are active
+	// returns true if user made selection or false if not
 	bool Render();
 
 	// internationalization support
