@@ -26,9 +26,11 @@ FileSelector::FileSelector() {
 	// set current path to OS working directory
 	setCurrentPath(std::filesystem::current_path(), false);
 
-	// add favorites and locations (OS-specific)
-	addFavorites();
-	addLocations();
+	// add default sidebar links
+	addDefaultFavorites();
+	addDefaultClouds();
+	addDefaultLocations();
+	addDefaultMedia();
 }
 
 
@@ -346,18 +348,29 @@ void FileSelector::renderFileDialog() {
 //
 
 void FileSelector::renderSideBar() {
-	// render favorites (if required)
-	if (favorites.size()) {
-		header(labels.favorites.c_str(), &favoritesVisible);
+	renderSideBarGroup(labels.favorites.c_str(), favorites);
+	renderSideBarGroup(labels.clouds.c_str(), clouds);
+	renderSideBarGroup(labels.locations.c_str(), locations);
+	renderSideBarGroup(labels.media.c_str(), media);
+}
 
-		if (favoritesVisible) {
+
+//
+//	FileSelector::renderSideBarGroup
+//
+
+void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& group) {
+	if (group.entries.size()) {
+		header(label.c_str(), &(group.visible));
+
+		if (group.visible) {
 			ImGui::Indent();
 
-			for (auto& favorite : favorites) {
-				ImGui::PushID(&favorite);
+			for (auto& entry : group.entries) {
+				ImGui::PushID(&entry);
 
-				if (ImGui::Selectable(reinterpret_cast<const char*>(favorite.name.c_str()))) {
-					setCurrentPath(favorite.path);
+				if (ImGui::Selectable(reinterpret_cast<const char*>(entry.name.c_str()))) {
+					setCurrentPath(entry.path);
 				}
 
 				ImGui::PopID();
@@ -367,44 +380,6 @@ void FileSelector::renderSideBar() {
 		}
 
 		ImGui::Spacing();
-	}
-
-	// render iCloud Drive (if required)
-	if (!icloudPath.empty()) {
-		header("iCloud", &icloudDriveVisible);
-
-		if (icloudDriveVisible) {
-			ImGui::Indent();
-
-			if (ImGui::Selectable("iCloud Drive")) {
-				setCurrentPath(icloudPath);
-			}
-
-			ImGui::Unindent();
-		}
-
-		ImGui::Spacing();
-	}
-
-	// render locations (if required)
-	if (locations.size()) {
-		header(labels.locations.c_str(), &locationsVisible);
-
-		if (locationsVisible) {
-			ImGui::Indent();
-
-			for (auto& location : locations) {
-				ImGui::PushID(&location);
-
-				if (ImGui::Selectable(reinterpret_cast<const char*>(location.name.c_str()))) {
-					setCurrentPath(location.path);
-				}
-
-				ImGui::PopID();
-			}
-
-			ImGui::Unindent();
-		}
 	}
 }
 
@@ -683,40 +658,47 @@ void FileSelector::spacing() {
 
 
 //
-//	FileSelector::addFavorites
+//	FileSelector::addDefaultFavorites
 //
 
-void FileSelector::addFavorites() {
+void FileSelector::addDefaultFavorites() {
 	auto home = getHome();
 
 	if (!home.empty()) {
 		// these only get added when they exist
-		addFavorite("Home", home);
-		addFavorite("Desktop", home / "Desktop");
-		addFavorite("Documents", home / "Documents");
-		addFavorite("Downloads", home / "Downloads");
-		addFavorite("Movies", home / "Movies");
-		addFavorite("Music", home / "Music");
-		addFavorite("Pictures", home / "Pictures");
-		addFavorite("OneDrive", home / "OneDrive");
-
-		// special treatment for iCloud (just for hardcore Apple princesses)
-		auto tmpPath = home / "Library" / "Mobile Documents" / "com~apple~CloudDocs";
-
-		if (std::filesystem::exists(tmpPath)) {
-			icloudPath = tmpPath;
-		}
+		favorites.add("Home", home);
+		favorites.add("Desktop", home / "Desktop");
+		favorites.add("Documents", home / "Documents");
+		favorites.add("Downloads", home / "Downloads");
 	}
 }
 
 
 //
-//	FileSelector::addFavorite
+//	FileSelector::addDefaultClouds
 //
 
-void FileSelector::addFavorite(const std::string& name, const std::filesystem::path& path) {
-	if (std::filesystem::exists(path)) {
-		favorites.emplace_back(name, path);
+void FileSelector::addDefaultClouds() {
+	auto home = getHome();
+
+	if (!home.empty()) {
+		clouds.add("iCloud Drive", home / "Library" / "Mobile Documents" / "com~apple~CloudDocs");
+		clouds.add("OneDrive", home / "OneDrive");
+	}
+}
+
+
+//
+//	FileSelector::addDefaultMedia
+//
+
+void FileSelector::addDefaultMedia() {
+	auto home = getHome();
+
+	if (!home.empty()) {
+		media.add("Movies", home / "Movies");
+		media.add("Music", home / "Music");
+		media.add("Pictures", home / "Pictures");
 	}
 }
 
@@ -790,25 +772,70 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 #else
 #include <pwd.h>
 #include <unistd.h>
+
+#ifndef __APPLE__
+#include <mntent.h>
+#endif
+
 #endif
 
 
 //
-//	FileSelector::addLocations
+//	FileSelector::addDefaultLocations
 //
 
-void FileSelector::addLocations() {
+void FileSelector::addDefaultLocations() {
 #if __APPLE__
 	std::filesystem::path volumes{"/Volumes"};
 
 	for (const auto& entry : std::filesystem::directory_iterator(volumes)) {
 		auto path = entry.path();
-		locations.emplace_back(path.filename(), std::filesystem::canonical(path));
+		locations.add(path.filename(), std::filesystem::canonical(path));
 	}
 
 #elif defined(_WIN32)
+	// get list of logical drives
+	DWORD bufferLength = GetLogicalDriveStringsW(0, nullptr);
+	std::vector<wchar_t> buffer(bufferLength);
+	GetLogicalDriveStringsW(bufferLength, buffer.data());
+
+	// parse the null-separated block of strings
+	for (auto drive = buffer.data(); *drive; drive += wcslen(drive) + 1) {
+		// convert drive to path and logical name
+		std::filesystem::path path{drive};
+		auto name = path.u8string();
+
+		// add drive type (if possible)
+		switch (GetDriveTypeW(drive)) {
+			case DRIVE_REMOVABLE: name += " (Removable)"; break;
+			case DRIVE_FIXED: name += " (Fixed)"; break;
+			case DRIVE_REMOTE: name += " (Network)"; break;
+			case DRIVE_CDROM: name += " (CD-ROM)"; break;
+			case DRIVE_RAMDISK: name += " (RAM)"; break;
+			default: break;
+		}
+
+		// add to list
+		locations.add(name, path);
+	}
 
 #else
+	// open the mounted filesystems table file
+	auto file = setmntent("/proc/mounts", "r");
+
+	if (file == nullptr) {
+		return;
+	}
+
+	// iterate through each mount entry
+	while (struct mntent* entry = getmntent(file); entry != nullptr; entry = getmntent(file)) {
+		// filter out pseudo-filesystems to get actual drives
+		if (entry->mnt_fsname[0] == '/') {
+			locations.add(entry->mnt_fsname, entry->mnt_dir);
+		}
+	}
+
+	endmntent(file);
 
 #endif
 }

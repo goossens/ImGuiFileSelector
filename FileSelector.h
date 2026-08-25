@@ -81,6 +81,23 @@ public:
 	// returns true if user made selection or false if not
 	bool Render();
 
+	// manage sidebar content
+	inline void ClearFavorites() { favorites.entries.clear(); }
+	inline void AddFavorite(const std::string& name, const std::filesystem::path& path) { favorites.entries.emplace_back(name, path); }
+	inline void AddDefaultFavorites() { addDefaultFavorites(); }
+
+	inline void ClearClouds() { clouds.entries.clear(); }
+	inline void AddCloud(const std::string& name, const std::filesystem::path& path) { clouds.entries.emplace_back(name, path); }
+	inline void AddDefaultClouds() { addDefaultClouds(); }
+
+	inline void ClearLocations() { locations.entries.clear(); }
+	inline void AddLocation(const std::string& name, const std::filesystem::path& path) { locations.entries.emplace_back(name, path); }
+	inline void AddDefaultLocations() { addDefaultLocations(); }
+
+	inline void ClearMedia() { media.entries.clear(); }
+	inline void AddMedia(const std::string& name, const std::filesystem::path& path) { media.entries.emplace_back(name, path); }
+	inline void AddDefaultMedia() { addDefaultMedia(); }
+
 	// internationalization support
 	struct Labels {
 		std::string ok;
@@ -90,7 +107,9 @@ public:
 		std::string sizeColumn;
 		std::string search;
 		std::string favorites;
+		std::string clouds;
 		std::string locations;
+		std::string media;
 		std::string newFolder;
 		std::string recentPlaces;
 		std::string confirmationWindow;
@@ -125,7 +144,9 @@ private:
 		"Size",
 		"search...",
 		"Favorites",
+		"Clouds",
 		"Locations",
+		"Media",
 		"New Folder",
 		"Recent Places",
 		"Confirmation...",
@@ -191,14 +212,22 @@ private:
 	std::vector<Node> nodes;
 	std::filesystem::file_time_type lastDirectoryWriteTime;
 
-	// favorites and locations
-	std::vector<NamedPath> favorites;
-	std::filesystem::path icloudPath;
-	std::vector<NamedPath> locations;
+	// sidebar groups
+	struct SideBarGroup {
+		std::vector<NamedPath> entries;
+		bool visible = true;
 
-	bool favoritesVisible = true;
-	bool icloudDriveVisible = true;
-	bool locationsVisible = true;
+		inline void add(const std::string& name, const std::filesystem::path& path) {
+			if (std::filesystem::exists(path)) {
+				entries.emplace_back(name, path);
+			}
+		}
+	};
+
+	SideBarGroup favorites;
+	SideBarGroup clouds;
+	SideBarGroup locations;
+	SideBarGroup media;
 
 	// error handling
 	std::string errorMessage;
@@ -220,6 +249,7 @@ private:
 
 	void renderFileDialog();
 	void renderSideBar();
+	void renderSideBarGroup(const std::string& label, SideBarGroup& group);
 	void renderHeader();
 	void renderListView(ImVec2 size);
 	void renderActionButtons();
@@ -227,9 +257,10 @@ private:
 	bool header(const char* label, bool* state);
 	void spacing();
 
-	void addFavorites();
-	void addFavorite(const std::string& name, const std::filesystem::path& path);
-	void addLocations();
+	void addDefaultFavorites();
+	void addDefaultClouds();
+	void addDefaultLocations();
+	void addDefaultMedia();
 
 	bool isHidden(const std::filesystem::path & path);
 
