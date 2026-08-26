@@ -62,8 +62,12 @@ public:
 	// returns true if selector is opened and false if a previous selector is still active
 	bool SelectDirectory();
 
-	// see if selector is currently open
+	// check currect selector state
 	inline bool IsOpen() const { return type != Type::idle; }
+	inline bool IsOpenFileOpen() const { return type != Type::openFile; }
+	inline bool IsSaveAsOpen() const { return type != Type::saveAs; }
+	inline bool IsSelectFilesOpen() const { return type != Type::selectFiles; }
+	inline bool IsSelectDirectoryOpen() const { return type != Type::selectDirectory; }
 
 	// forcefully close the current selector
 	// this doesn't do anything if no selector is open
@@ -158,7 +162,7 @@ private:
 		"%b %d, %Y at %I:%M %p"
 	};
 
-	// current state
+	// current dialog type
 	enum class Type {
 		idle,
 		openFile,

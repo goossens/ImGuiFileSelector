@@ -106,7 +106,7 @@ bool FileSelector::Render() {
 
 		// see if user performed action (selection or cancel)
 		if (hasAction) {
-			// handle open file scenario
+			// handle file open mode
 			if (type == Type::openFile && !selectedPath.empty()) {
 				// user selected a file
 				// get directory of selected file
