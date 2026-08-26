@@ -53,6 +53,17 @@ void Selector::render() {
 		}
 	}
 
+	// manage options
+	if (ImGui::Checkbox("Show Sidebar", &showSideBar)) {
+		selector.SetShowSideBar(showSideBar);
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Checkbox("Show Hidden", &showHidden)) {
+		selector.SetShowHidden(showHidden);
+	}
+
 	// trigger file selectors through a button or shortcut
 	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteAlways)) {
 		selector.OpenFile("Select File to Open...");
@@ -61,10 +72,10 @@ void Selector::render() {
 
 	// render the selector each frame (if there is a need for it; handled internally)
 	if (selector.Render()) {
-		if (selector.HasSelectedPath()) {
-			logger.Add((std::string("File [") + selector.GetSelectedPath().string() + "] selected").c_str());
+		if (selector.SelectedOpenFile()) {
+			logger.Add((std::string("File [") + selector.GetSelectedPath().string() + "] selected for open").c_str());
 
-		} else {
+		} else if (selector.WasCancelled()) {
 			logger.Add("Selector cancelled");
 		}
 	}

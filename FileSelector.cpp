@@ -101,27 +101,27 @@ bool FileSelector::Render() {
 		ImGuiWindowFlags_NoScrollbar;
 
 	if (ImGui::BeginPopupModal("###ImGuiFileSelector", nullptr, windowFlags)) {
-		hasAction = false;
+		action = Action::none;
 		renderFileDialog();
 
 		// see if user performed action (selection or cancel)
-		if (hasAction) {
+		if (action != Action::none) {
 			// handle file open mode
-			if (type == Type::openFile && !selectedPath.empty()) {
+			if (action == Action::selectedOpenFile) {
 				// user selected a file
 				// get directory of selected file
 				auto directory = selectedPath.parent_path();
 
 				// remove old recent places entry to avoid duplicates
-				auto i = std::find(recentPlaces.begin(), recentPlaces.end(), directory);
+				auto i = std::find(state.recentPlaces.begin(), state.recentPlaces.end(), directory);
 
-				if (i != recentPlaces.end()) {
-					recentPlaces.erase(i);
+				if (i != state.recentPlaces.end()) {
+					state.recentPlaces.erase(i);
 				}
 
 				// limit list (if required) and add new entry
-				if (recentPlaces.size() > 7) { recentPlaces.resize(7); }
-				recentPlaces.emplace(recentPlaces.begin(), directory);
+				if (state.recentPlaces.size() > 7) { state.recentPlaces.resize(7); }
+				state.recentPlaces.emplace(state.recentPlaces.begin(), directory);
 			}
 
 			// close selector popup
@@ -132,11 +132,10 @@ bool FileSelector::Render() {
 
 		// handle possible popups
 		renderPopups();
-
 		ImGui::EndPopup();
 	}
 
-	return hasAction;
+	return action != Action::none;
 }
 
 
@@ -146,13 +145,16 @@ bool FileSelector::Render() {
 
 bool FileSelector::openDialog(Type openType) {
 	if (type == Type::idle) {
+		refreshNodes(state.currentPath);
+		sortNodes();
+
 		type = openType;
 		selectedPath.clear();
 		isOpen = false;
 		clearSelections();
 
 		pathHistory.clear();
-		pathHistory.emplace_back(currentPath);
+		pathHistory.emplace_back(state.currentPath);
 		historyIndex = 0;
 		return true;
 
@@ -180,16 +182,16 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 	}
 
 	// sort directory entries
-	sortNodes(sortColumn, sortDirection);
+	sortNodes();
 
 	// save new path
-	currentPath = canonicalPath;
+	state.currentPath = canonicalPath;
 
 	// build a stack of path parts (in reverse order)
 	pathStack.clear();
 	std::filesystem::path partialPath;
 
-	for (auto i = currentPath.begin(); i != currentPath.end(); i++) {
+	for (auto i = state.currentPath.begin(); i != state.currentPath.end(); i++) {
 		partialPath /= *i;
 		pathStack.emplace_back(i->u8string(), partialPath);
 	}
@@ -226,7 +228,7 @@ bool FileSelector::refreshNodes(const std::filesystem::path& path) {
 	try {
 		for (const auto& entry : std::filesystem::directory_iterator(path)) {
 			if (entry.is_regular_file() || entry.is_directory()) {
-				if (showHiddenNodes || !isHidden(entry.path())) {
+				if (showHidden || !isHidden(entry.path())) {
 					// create a new node
 					auto& node = tmpNodes.emplace_back();
 
@@ -269,25 +271,21 @@ bool FileSelector::refreshNodes(const std::filesystem::path& path) {
 //	FileSelector::sortNodes
 //
 
-void FileSelector::sortNodes(ImS16 column, ImGuiSortDirection direction) {
-	// remember settings
-	sortColumn = column;
-	sortDirection = direction;
-
+void FileSelector::sortNodes() {
 	// sort current nodes
-	std::sort(nodes.begin(), nodes.end(), [column, direction](const Node& left, const Node& right) {
-		if (column == 0) {
-			return (direction == ImGuiSortDirection_Ascending)
+	std::sort(nodes.begin(), nodes.end(), [this](const Node& left, const Node& right) {
+		if (state.sortColumn == 0) {
+			return (state.sortAscending)
 				? left.sortString < right.sortString
 				: left.sortString > right.sortString;
 
-		} else if (column == 1) {
-			return (direction == ImGuiSortDirection_Ascending)
+		} else if (state.sortColumn == 1) {
+			return (state.sortAscending)
 				? left.lastUpdate < right.lastUpdate
 				: left.lastUpdate > right.lastUpdate;
 
-		} else if (column == 2) {
-			return (direction == ImGuiSortDirection_Ascending)
+		} else if (state.sortColumn == 2) {
+			return (state.sortAscending)
 				? left.size < right.size
 				: left.size > right.size;
 		}
@@ -318,22 +316,24 @@ void FileSelector::renderFileDialog() {
 	glyphSize = ImGui::CalcTextSize("#");
 	itemSpacing = ImGui::GetStyle().ItemSpacing;
 
-	auto availableSpace = ImGui::GetContentRegionAvail();
+	if (showSideBar) {
+		auto availableSpace = ImGui::GetContentRegionAvail();
 
-	ImGuiChildFlags flags =
-		ImGuiChildFlags_Borders |
-		ImGuiChildFlags_ResizeX;
+		ImGuiChildFlags flags =
+			ImGuiChildFlags_Borders |
+			ImGuiChildFlags_ResizeX;
 
-	if (ImGui::BeginChild("sideBar",ImVec2(glyphSize.x * 25.0f, availableSpace.y), flags)) {
-		renderSideBar();
+		if (ImGui::BeginChild("sideBar",ImVec2(glyphSize.x * 25.0f, availableSpace.y), flags)) {
+			renderSideBar();
+		}
+
+		ImGui::EndChild();
+		ImGui::SameLine();
 	}
-
-	ImGui::EndChild();
-	ImGui::SameLine();
 
 	if (ImGui::BeginChild("mainArea", ImGui::GetContentRegionAvail())) {
 		renderHeader();
-		availableSpace = ImGui::GetContentRegionAvail();
+		auto availableSpace = ImGui::GetContentRegionAvail();
 		auto actionButtonHeight = frameHeight * 1.5f + itemSpacing.y * 2.0f;
 		renderListView(ImVec2(availableSpace.x, availableSpace.y - actionButtonHeight));
 		renderActionButtons();
@@ -434,7 +434,7 @@ void FileSelector::renderHeader() {
 		ImGui::Separator();
 		ImGui::TextDisabled("%s", labels.recentPlaces.c_str());
 
-		for (auto i = recentPlaces.begin(); i < recentPlaces.end(); i++) {
+		for (auto i = state.recentPlaces.begin(); i < state.recentPlaces.end(); i++) {
 			ImGui::PushID(&(*i));
 			auto name = i->filename().u8string();
 
@@ -484,8 +484,10 @@ void FileSelector::renderListView(ImVec2 size) {
 		// handle sort requests
 		if (ImGuiTableSortSpecs* sortSpecs = ImGui::TableGetSortSpecs()) {
 			if (sortSpecs->SpecsDirty) {
-				sortNodes(sortSpecs->Specs->ColumnIndex, sortSpecs->Specs->SortDirection);
 				sortSpecs->SpecsDirty = false;
+				state.sortColumn = static_cast<size_t>(sortSpecs->Specs->ColumnIndex);
+				state.sortAscending	= sortSpecs->Specs->SortDirection == ImGuiSortDirection_Ascending;
+				sortNodes();
 			}
 		}
 
@@ -507,7 +509,7 @@ void FileSelector::renderListView(ImVec2 size) {
 
 					} else {
 						selectedPath = node.path;
-						hasAction = true;
+						action = Action::selectedOpenFile;
 					}
 
 				} else {
@@ -547,7 +549,7 @@ void FileSelector::renderActionButtons() {
 	spacing();
 
 	// add ability to create a new folder (if required)
-	if (type == Type::saveAs){
+	if (type == Type::saveAs) {
 		if (ImGui::Button(labels.newFolder.c_str())) {
 		}
 
@@ -564,10 +566,10 @@ void FileSelector::renderActionButtons() {
 	// handle cancel button and shortcut
 	if (ImGui::Button(labels.cancel.c_str(), size) ||ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
 		selectedPath.clear();
-		hasAction = true;
+		action = Action::cancelled;
 	}
 
-	// handle OK button
+	// handle OK button (disable when nothing is selected)
 	ImGui::SameLine();
 
 	if (selectedPath.empty()) {
@@ -575,7 +577,13 @@ void FileSelector::renderActionButtons() {
 	}
 
 	if (ImGui::Button(labels.ok.c_str(), size)) {
-		hasAction = true;
+		switch (type) {
+			case Type::openFile: action = Action::selectedOpenFile; break;
+			case Type::saveAs: action = Action::selectedSaveAs; break;
+			case Type::selectFiles: action = Action::selecteFiles; break;
+			case Type::selectDirectory: action = Action::selectedDirectory; break;
+			default: break;
+		}
 	}
 
 	if (selectedPath.empty()) {
