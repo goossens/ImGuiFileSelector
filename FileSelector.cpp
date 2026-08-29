@@ -241,8 +241,8 @@ bool FileSelector::refreshNodes(const std::filesystem::path& path) {
 
 					// precalculate strings for faster rendering
 					node.pathString = node.path.filename().u8string();
-					node.sizeString = node.isDirectory ? "    ---" : node.readableSize();
-					node.updateString = node.readableDate(labels.timeFormat);
+					node.sizeString = node.isDirectory ? "    ---" : node.readableSize(labels);
+					node.updateString = node.readableDate(labels);
 
 					// precalculate sort string
 					auto sortString = node.path.filename().generic_wstring();
@@ -361,9 +361,9 @@ void FileSelector::renderSideBar() {
 
 void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& group) {
 	if (group.entries.size()) {
-		header(label.c_str(), &(group.visible));
+		grouping(label.c_str(), &(group.expanded));
 
-		if (group.visible) {
+		if (group.expanded) {
 			ImGui::Indent();
 
 			for (auto& entry : group.entries) {
@@ -620,10 +620,10 @@ void FileSelector::renderPopups() {
 
 
 //
-//	FileSelector::header
+//	FileSelector::grouping
 //
 
-bool FileSelector::header(const char* label, bool* state) {
+bool FileSelector::grouping(const char* label, bool* expanded) {
 	// determine position and space
 	auto pos = ImGui::GetCursorScreenPos();
 	auto size = ImGui::GetContentRegionAvail();
@@ -633,7 +633,7 @@ bool FileSelector::header(const char* label, bool* state) {
 	bool changed = ImGui::InvisibleButton(label, size);
 
 	if (changed) {
-		*state = !*state;
+		*expanded = !*expanded;
 	}
 
 	// render label and state
@@ -644,8 +644,8 @@ bool FileSelector::header(const char* label, bool* state) {
 	if (ImGui::IsItemHovered()) {
 		auto right = pos + ImVec2(size.x - glyphSize.x, 0.0f);
 		ImVec2 p1 = ImVec2(right + ImVec2(0.0f, glyphSize.y * 0.3f));
-		ImVec2 p2 = right + (*state ? ImVec2(glyphSize.x * 0.5f, glyphSize.y * 0.7f) : ImVec2(glyphSize.x, glyphSize.y * 0.5f));
-		ImVec2 p3 = right + (*state ? ImVec2(glyphSize.x, glyphSize.y * 0.3f) : ImVec2(0.0f, glyphSize.y * 0.7f));
+		ImVec2 p2 = right + (*expanded ? ImVec2(glyphSize.x * 0.5f, glyphSize.y * 0.7f) : ImVec2(glyphSize.x, glyphSize.y * 0.5f));
+		ImVec2 p3 = right + (*expanded ? ImVec2(glyphSize.x, glyphSize.y * 0.3f) : ImVec2(0.0f, glyphSize.y * 0.7f));
 		drawList->AddLine(p1, p2, color);
 		drawList->AddLine(p2, p3, color);
 	}
@@ -715,7 +715,7 @@ void FileSelector::addDefaultMedia() {
 //	FileSelector::Node::readableSize
 //
 
-std::string FileSelector::Node::readableSize() {
+std::string FileSelector::Node::readableSize(const Labels& labels) {
 	size_t i = 0;
 	double mantissa = static_cast<double>(size);
 
@@ -727,7 +727,17 @@ std::string FileSelector::Node::readableSize() {
 	mantissa = std::ceil(mantissa * 10.0) / 10.0;
 	std::stringstream ss;
 	ss << std::fixed << std::setw(5) << std::setprecision(1) << std::setfill(' ') << mantissa;
-	ss << " KMGTPE"[i] << (i > 0 ? "B" : "");
+
+	switch (i) {
+		case 0: ss << labels.bytes; break;
+		case 1: ss << labels.kiloBytes; break;
+		case 2: ss << labels.megaBytes; break;
+		case 3: ss << labels.gigaBytes; break;
+		case 4: ss << labels.terraBytes; break;
+		case 5: ss << labels.petaBytes; break;
+		case 6: ss << labels.exoBytes; break;
+		default: ss << "??"; break;
+	}
 
 	return ss.str();
 }
@@ -737,7 +747,7 @@ std::string FileSelector::Node::readableSize() {
 //	FileSelector::Node::readableDate
 //
 
-std::string FileSelector::Node::readableDate(const std::string& format) {
+std::string FileSelector::Node::readableDate(const Labels& labels) {
 	auto wallNow = std::chrono::system_clock::now();
 	auto fileNow = std::filesystem::file_time_type::clock::now();
 
@@ -755,7 +765,7 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 #endif
 
 	std::stringstream ss;
-	ss << std::put_time(&localTime, format.c_str());
+	ss << std::put_time(&localTime, labels.timeFormat.c_str());
 	return ss.str();
 }
 
@@ -774,6 +784,8 @@ std::string FileSelector::Node::readableDate(const std::string& format) {
 #ifdef APIENTRY
 #undef APIENTRY
 #endif
+
+#include <cstdlib.h>
 #include <windows.h>
 #include <shlobj.h>
 
@@ -836,7 +848,7 @@ void FileSelector::addDefaultLocations() {
 	}
 
 	// iterate through each mount entry
-	while (struct mntent* entry = getmntent(file); entry != nullptr; entry = getmntent(file)) {
+	for (struct mntent* entry = getmntent(file); entry != nullptr; entry = getmntent(file)) {
 		// filter out pseudo-filesystems to get actual drives
 		if (entry->mnt_fsname[0] == '/') {
 			locations.add(entry->mnt_fsname, entry->mnt_dir);

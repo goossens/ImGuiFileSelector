@@ -75,9 +75,9 @@ bool movePathToTrashCan(const std::filesystem::path& path) {
 	// run native API
 	SHFILEOPSTRUCTW fileOp = {0};
 	fileOp.wFunc = FO_DELETE;
-	fileOp.pFrom = pathBuffer.data();
+	fileOp.pFrom = canonicalString.data();
 	fileOp.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT;
-	SHFileOperationW(&fileOp) == 0;
+	return SHFileOperationW(&fileOp) == 0;
 }
 
 

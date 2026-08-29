@@ -140,6 +140,13 @@ public:
 		std::string duplicate;
 		std::string moveToTrash;
 		std::string timeFormat;
+		std::string bytes;
+		std::string kiloBytes;
+		std::string megaBytes;
+		std::string gigaBytes;
+		std::string terraBytes;
+		std::string petaBytes;
+		std::string exoBytes;
 	};
 
 	inline void SetLabels(struct Labels& newLabels) { labels = newLabels; }
@@ -176,7 +183,14 @@ private:
 		"Rename",
 		"Move to Trash",
 		"Duplicate",
-		"%b %d, %Y at %I:%M %p"
+		"%b %d, %Y at %I:%M %p",
+		"B ",
+		"KB",
+		"MB",
+		"GB",
+		"TB",
+		"PB",
+		"EB"
 	};
 
 	// current dialog type
@@ -231,8 +245,8 @@ private:
 		std::string updateString;
 		std::wstring sortString;
 
-		std::string readableSize();
-		std::string readableDate(const std::string& format);
+		std::string readableSize(const Labels& labels);
+		std::string readableDate(const Labels& labels);
 	};
 
 	std::vector<Node> nodes;
@@ -241,7 +255,7 @@ private:
 	// sidebar groups
 	struct SideBarGroup {
 		std::vector<NamedPath> entries;
-		bool visible = true;
+		bool expanded = true;
 
 		inline void add(const std::string& name, const std::filesystem::path& path) {
 			if (std::filesystem::exists(path)) {
@@ -280,7 +294,7 @@ private:
 	void renderListView(ImVec2 size);
 	void renderActionButtons();
 	void renderPopups();
-	bool header(const char* label, bool* state);
+	bool grouping(const char* label, bool* expanded);
 	void spacing();
 
 	void addDefaultFavorites();
