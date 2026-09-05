@@ -14,6 +14,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -54,7 +55,7 @@ public:
 	inline void setShowHidden(bool show) { showHidden = show; }
 	void setSort(size_t column, bool ascending);
 	void setExtensionFilter(const std::string& filter);
-	inline void setSearch(const std::string& search) { searchCriteria = search; }
+	void setSearch(const std::string& filter);
 
 	// iterate through listing
 	void forEach(std::function<void(const Entry&)> callback);
@@ -66,8 +67,8 @@ private:
 	size_t sortColumn = 0;
 	bool sortAscending = true;
 	bool showHidden = false;
-	std::vector<std::string> extensionFilter;
-	std::string searchCriteria;
+	std::vector<std::string> extensions;
+	std::regex search;
 	std::string error;
 
 	// support functions

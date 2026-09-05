@@ -97,13 +97,27 @@ void Listing::setSort(size_t column, bool ascending) {
 //
 
 void Listing::setExtensionFilter(const std::string& filter) {
-	extensionFilter.clear();
+	extensions.clear();
 	std::stringstream ss(filter);
 	std::string extension;
 
 	while (std::getline(ss, extension, ',')) {
-        extensionFilter.emplace_back(extension);
-    }
+		extensions.emplace_back(extension);
+	}
+}
+
+
+//
+//	Listing::setSearch
+//
+
+void Listing::setSearch(const std::string& filter) {
+	if (filter.size()) {
+		search.assign(filter, std::regex_constants::icase);
+
+	} else {
+		search = std::regex();
+	}
 }
 
 
@@ -172,14 +186,14 @@ bool Listing::filter(const Entry& entry) {
 	}
 
 	// filter by extension
-	if (extensionFilter.size()) {
-		if (std::find(extensionFilter.begin(), extensionFilter.end(), entry.extension) != extensionFilter.end()) {
+	if (extensions.size()) {
+		if (std::find(extensions.begin(), extensions.end(), entry.extension) != extensions.end()) {
 			return false;
 		}
 	}
 
 	// filter by search
-	if (searchCriteria.size() == 0 && entry.nameString.find(searchCriteria) == std::string::npos) {
+	if (search.mark_count() != 0 && !std::regex_search(entry.nameString, search)) {
 		return false;
 	}
 
