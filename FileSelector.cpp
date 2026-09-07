@@ -876,7 +876,7 @@ bool FileSelector::isHidden(const std::filesystem::path& path) {
 
 #else
 	PathString name = path.filename().u8string();
-    return name[0] == '.' && name != "." && name != "..";
+	return name[0] == '.' && name != "." && name != "..";
 #endif
 }
 

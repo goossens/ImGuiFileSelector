@@ -57,7 +57,7 @@ bool movePathToTrashCan(const std::filesystem::path& path) {
 #elif _WIN32
 
 //
-//	movePathToTrashCan (Windowz implementation)
+//	movePathToTrashCan (Windows implementation)
 //
 
 #include <windows.h>

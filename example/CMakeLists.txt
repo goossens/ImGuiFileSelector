@@ -17,13 +17,8 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
 add_subdirectory(deps)
 
-file(GLOB SOURCES CONFIGURE_DEPENDS ../*.cpp ../*.h)
-
-add_executable(example
-	${SOURCES}
-	trashcan.cpp
-	selector.cpp
-	main.cpp)
+file(GLOB SOURCES CONFIGURE_DEPENDS *.cpp ../*.cpp ../*.h)
+add_executable(example ${SOURCES})
 
 if(D3D11)
 	target_compile_definitions(example PRIVATE D3D11)

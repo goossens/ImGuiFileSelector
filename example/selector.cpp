@@ -13,7 +13,9 @@
 #include <random>
 #include <sstream>
 
+#include "knowndir.h"
 #include "selector.h"
+#include "trashcan.h"
 
 
 //
