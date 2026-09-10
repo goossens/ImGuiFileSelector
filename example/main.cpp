@@ -1,4 +1,4 @@
-//	Toastr - A selector system for Dear ImGui.
+//	FileSelector - A file select dialog for Dear ImGui.
 //	Copyright (c) 2026 Johan A. Goossens. All rights reserved.
 //
 //	This work is licensed under the terms of the MIT license.

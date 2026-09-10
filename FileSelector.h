@@ -13,6 +13,8 @@
 //
 
 #include <filesystem>
+#include <functional>
+#include <regex>
 #include <string>
 #include <vector>
 
@@ -29,7 +31,7 @@
 
 class FileSelector {
 public:
-	// singleton access
+	// singleton implementation
 	static inline FileSelector& Instance() {
 		static FileSelector singleton;
 		return singleton;
@@ -38,19 +40,35 @@ public:
 	// constructor
 	FileSelector();
 
-	//	access options
-	inline void SetShowSideBar(bool value) { showSideBar = value; }
-	inline bool GetShowSideBar() const { return showSideBar; }
-	inline void SetShowHidden(bool value) { showHidden = value; }
-	inline bool GetShowHidden() const { return showHidden; }
+	// sort options
+	enum class SortColumn {
+		name,
+		date,
+		size
+	};
 
-	// access state
+	enum class SortOrder
+	 {
+		ascending,
+		descending
+	};
+
+	//	access options/state
+	inline void SetShowSideBar(bool value) { state.showSideBar = value; }
+	inline bool GetShowSideBar() const { return state.showSideBar; }
+	inline void SetShowHidden(bool value) { state.showHidden = value; }
+	inline bool GetShowHidden() const { return state.showHidden; }
+	inline void SetSortColumn(SortColumn value) { state.sortColumn = value; }
+	inline SortColumn GetSortColumn() const { return state.sortColumn; }
+	inline void SetSortOrder(SortOrder value) { state.sortOrder = value; }
+	inline SortOrder GetSortOrder() const { return state.sortOrder; }
+
 	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
 	inline const std::filesystem::path& GetCurrentPath() const { return state.currentPath; }
 
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
-	bool OpenFile(const std::string& filter="*");
+	bool OpenFile(const std::string& filter="");
 
 	// start a selector to pick a path to save content to
 	// returns true if selector is opened and false if a previous selector is still active
@@ -58,11 +76,11 @@ public:
 
 	// start a selector to select one or more files
 	// returns true if selector is opened and false if a previous selector is still active
-	bool SelectFiles(const std::string& filter="*");
+	bool SelectFiles(const std::string& filter="");
 
 	// start a selector to select a directory
 	// returns true if selector is opened and false if a previous selector is still active
-	bool SelectDirectory();
+	bool SelectDirectory(const std::string& filter="");
 
 	// forcefully close the current selector
 	// this doesn't do anything if no selector is open
@@ -81,7 +99,7 @@ public:
 	inline bool WasCancelled() const { return action == Action::cancelled; }
 	inline bool SelectedOpenFile() const { return action == Action::selectedOpenFile; }
 	inline bool SelectedSaveAs() const { return action == Action::selectedSaveAs; }
-	inline bool SelectedFiles() const { return action == Action::selecteFiles; }
+	inline bool SelectedFiles() const { return action == Action::selectedFiles; }
 	inline bool SelectedDirectory() const { return action == Action::selectedDirectory; }
 
 	inline const std::filesystem::path& GetSelectedPath() const { return selectedPath; }
@@ -112,8 +130,10 @@ public:
 	struct State {
 		std::filesystem::path currentPath;
 		std::vector<std::filesystem::path> recentPlaces;
-		size_t sortColumn = 0;
-		bool sortAscending = true;
+		bool showSideBar = true;
+		bool showHidden = false;
+		SortColumn sortColumn = SortColumn::name;
+		SortOrder sortOrder = SortOrder::ascending;
 	};
 
 	const State& GetCurrentState() const { return state; }
@@ -126,7 +146,7 @@ public:
 		std::string nameColumn;
 		std::string dateColumn;
 		std::string sizeColumn;
-		std::string search;
+		std::string filter;
 		std::string favorites;
 		std::string clouds;
 		std::string locations;
@@ -135,7 +155,6 @@ public:
 		std::string recentPlaces;
 		std::string confirmationWindow;
 		std::string errorWindow;
-		std::string cantAccess;
 		std::string rename;
 		std::string duplicate;
 		std::string moveToTrash;
@@ -153,24 +172,14 @@ public:
 	inline const Labels& GetLabels() const { return labels; }
 
 private:
-#if __cplusplus >= 202002L
-		using PathString = std::u8string;
-
-	#else
-		using PathString = std::string;
-#endif
-
 	// configuration
-	bool showSideBar = true;
-	bool showHidden = false;
-
 	Labels labels = {
 		"OK",
 		"Cancel",
 		"Name",
 		"Date",
 		"Size",
-		"search...",
+		"filter...",
 		"Favorites",
 		"Clouds",
 		"Locations",
@@ -179,7 +188,6 @@ private:
 		"Recent Places",
 		"Confirmation...",
 		"Error...",
-		"Can't access",
 		"Rename",
 		"Move to Trash",
 		"Duplicate",
@@ -208,7 +216,7 @@ private:
 		cancelled,
 		selectedOpenFile,
 		selectedSaveAs,
-		selecteFiles,
+		selectedFiles,
 		selectedDirectory
 	}  action = Action::none;
 
@@ -224,23 +232,26 @@ private:
 	// a named path
 	struct NamedPath {
 		NamedPath() = default;
-		NamedPath(PathString name, std::filesystem::path path) : name(name), path(path) {}
-		PathString name;
+		NamedPath(std::string name, std::filesystem::path path) : name(name), path(path) {}
+		std::string name;
 		std::filesystem::path path;
 	};
 
 	// parts of the current path in reverse order
 	std::vector<NamedPath> pathStack;
 
-	// list of nodes (files and directories) at current path
-	struct Node {
+	// single directory entry
+	struct Entry {
+		// informating about a single directory entry
 		std::filesystem::path path;
 		bool isDirectory;
 		std::uintmax_t size;
+		std::string extension;
 		std::filesystem::file_time_type lastUpdate;
 		bool isSelected;
+		bool isHidden;
 
-		PathString pathString;
+		std::string nameString;
 		std::string sizeString;
 		std::string updateString;
 		std::wstring sortString;
@@ -249,8 +260,51 @@ private:
 		std::string readableDate(const Labels& labels);
 	};
 
-	std::vector<Node> nodes;
-	std::filesystem::file_time_type lastDirectoryWriteTime;
+	// current directory listing
+	class Listing : public std::vector<Entry> {
+	public:
+		// load a specified path
+		bool load(const std::filesystem::path& path, const Labels& labels);
+
+		// set filter parameters
+		inline void setShowHidden(bool show) { showHidden = show; }
+		void setSort(SortColumn column, SortOrder order);
+		void setExtensionFilter(const std::string& filter);
+		void setUserFilter(const std::string& filter);
+
+		// iterate through listing
+		void forEach(std::function<void(Entry&)> callback);
+
+		// clear all selections
+		void clearSelections();
+
+	private:
+		// properties
+		std::filesystem::path currentPath;
+		std::filesystem::file_time_type lastWriteTime;
+		SortColumn sortColumn = SortColumn::name;
+		SortOrder sortOrder = SortOrder::ascending;
+		bool showHidden = false;
+		std::vector<std::string> extensions;
+		bool filterActive = false;
+		std::regex filterRegex;
+		std::string error;
+
+		// support functions
+		void sort();
+		bool filter(const Entry& entry);
+	} listing;
+
+	// known user directory types
+	enum class KnownDirectory {
+		desktop,
+		documents,
+		downloads,
+
+		movies,
+		music,
+		pictures
+	};
 
 	// sidebar groups
 	struct SideBarGroup {
@@ -258,9 +312,16 @@ private:
 		bool expanded = true;
 
 		inline void add(const std::string& name, const std::filesystem::path& path) {
-			if (std::filesystem::exists(path)) {
+			if (isAccessible(path)) {
 				entries.emplace_back(name, path);
 			}
+		}
+
+		inline void add(KnownDirectory directory) {
+			std::string name;
+			std::filesystem::path path;
+			getKnownDirectoryInfo(directory, name, path);
+			add(name, path);
 		}
 	};
 
@@ -278,14 +339,12 @@ private:
 	float frameHeight;
 	ImVec2 glyphSize;
 	ImVec2 itemSpacing;
+	std::string filterString;
+	std::filesystem::path nextPath;
 
 	// local functions
-	bool openDialog(Type type);
+	bool openDialog(Type type, const std::string& filter="");
 	bool setCurrentPath(const std::filesystem::path path, bool addHistory=true);
-	bool refreshNodes(const std::filesystem::path& path);
-	void sortNodes();
-
-	void clearSelections();
 
 	void renderFileDialog();
 	void renderSideBar();
@@ -302,13 +361,30 @@ private:
 	void addDefaultLocations();
 	void addDefaultMedia();
 
-	bool isHidden(const std::filesystem::path & path);
-
 	inline void setErrorMessage(const std::string& message, const std::string& details="") {
 		errorMessage = message;
 		errorDetails = details;
 		openErrorMessage = true;
 	}
 
-	std::filesystem::path getHome();
+	static std::filesystem::path getHome();
+	static bool isHidden(const std::filesystem::path& path);
+	static bool isAccessible(const std::filesystem::path& path);
+	static void getKnownDirectoryInfo(KnownDirectory type, std::string& label, std::filesystem::path& path);
+	static void forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback);
+	static bool movePathToTrashCan(const std::filesystem::path& path);
+
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
+	static inline std::string pathToString(const std::filesystem::path& path) {
+		auto u8Str = path.generic_u8string();
+		std::string str(u8Str.begin(), u8Str.end());
+		return str;
+	}
+
+	#else
+	static inline std::string pathToString(const std::filesystem::path& path) {
+		return path.u8string();
+	}
+#endif
+
 };
