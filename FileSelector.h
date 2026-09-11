@@ -86,14 +86,14 @@ public:
 	// this doesn't do anything if no selector is open
 	//
 	// it also doesn't need to be called when a selector completes as that is handled internally
-	inline void Close() { type = Type::idle; }
+	inline void Close() { mode = Mode::idle; }
 
 	// check currect selector state
-	inline bool IsOpen() const { return type != Type::idle; }
-	inline bool IsOpenFileOpen() const { return type != Type::openFile; }
-	inline bool IsSaveAsOpen() const { return type != Type::saveAs; }
-	inline bool IsSelectFilesOpen() const { return type != Type::selectFiles; }
-	inline bool IsSelectDirectoryOpen() const { return type != Type::selectDirectory; }
+	inline bool IsOpen() const { return mode != Mode::idle; }
+	inline bool IsOpenFileOpen() const { return mode != Mode::openFile; }
+	inline bool IsSaveAsOpen() const { return mode != Mode::saveAs; }
+	inline bool IsSelectFilesOpen() const { return mode != Mode::selectFiles; }
+	inline bool IsSelectDirectoryOpen() const { return mode != Mode::selectDirectory; }
 
 	// get selection status
 	inline bool WasCancelled() const { return action == Action::cancelled; }
@@ -151,6 +151,7 @@ public:
 		std::string clouds;
 		std::string locations;
 		std::string media;
+		std::string saveAs;
 		std::string newFolder;
 		std::string recentPlaces;
 		std::string confirmationWindow;
@@ -184,6 +185,7 @@ private:
 		"Clouds",
 		"Locations",
 		"Media",
+		"Save As:",
 		"New Folder",
 		"Recent Places",
 		"Confirmation...",
@@ -201,14 +203,14 @@ private:
 		"EB"
 	};
 
-	// current dialog type
-	enum class Type {
+	// current dialog mode
+	enum class Mode {
 		idle,
 		openFile,
 		saveAs,
 		selectFiles,
 		selectDirectory
-	} type = Type::idle;
+	} mode = Mode::idle;
 
 	// last action taken
 	enum class Action {
@@ -223,7 +225,8 @@ private:
 	// current state
 	State state;
 	std::filesystem::path selectedPath;
-	bool isOpen;
+	std::vector<std::filesystem::path> selectedPaths;
+	bool requestOpen = false;
 
 	// directory traversal history in current session
 	std::vector<std::filesystem::path> pathHistory;
@@ -339,11 +342,12 @@ private:
 	float frameHeight;
 	ImVec2 glyphSize;
 	ImVec2 itemSpacing;
+	std::string saveAsString;
 	std::string filterString;
 	std::filesystem::path nextPath;
 
 	// local functions
-	bool openDialog(Type type, const std::string& filter="");
+	bool openDialog(Mode mode, const std::string& filter="");
 	bool setCurrentPath(const std::filesystem::path path, bool addHistory=true);
 
 	void renderFileDialog();
@@ -354,18 +358,15 @@ private:
 	void renderActionButtons();
 	void renderPopups();
 	bool grouping(const char* label, bool* expanded);
+
 	void spacing();
+	static bool inputString(const char* label, std::string* value);
+	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);
 
 	void addDefaultFavorites();
 	void addDefaultClouds();
 	void addDefaultLocations();
 	void addDefaultMedia();
-
-	inline void setErrorMessage(const std::string& message, const std::string& details="") {
-		errorMessage = message;
-		errorDetails = details;
-		openErrorMessage = true;
-	}
 
 	static std::filesystem::path getHome();
 	static bool isHidden(const std::filesystem::path& path);
@@ -386,5 +387,4 @@ private:
 		return path.u8string();
 	}
 #endif
-
 };

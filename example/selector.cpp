@@ -66,14 +66,24 @@ void Selector::render() {
 
 	// trigger file selectors through a button or shortcut
 	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteAlways)) {
-		selector.OpenFile("Select File to Open...");
-		logger.Add("Opened selector");
+		selector.OpenFile();
+		logger.Add("Opened file selector");
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Save As") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteAlways)) {
+		selector.SaveAs();
+		logger.Add("Opened save as");
 	}
 
 	// render the selector each frame (if there is a need for it; handled internally)
 	if (selector.Render()) {
 		if (selector.SelectedOpenFile()) {
 			logger.Add((std::string("File [") + selector.GetSelectedPath().string() + "] selected for open").c_str());
+
+		} else if (selector.SelectedSaveAs()) {
+			logger.Add((std::string("File [") + selector.GetSelectedPath().string() + "] selected for save as").c_str());
 
 		} else if (selector.WasCancelled()) {
 			logger.Add("Selector cancelled");
