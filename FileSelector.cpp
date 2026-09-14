@@ -82,8 +82,11 @@ bool FileSelector::SelectDirectory(const std::string& filter) {
 bool FileSelector::openDialog(Mode openMode, const std::string& filter) {
 	if (mode == Mode::idle) {
 		mode = openMode;
+		saveAsString.clear();
 		selectedPath.clear();
 		selectedPaths.clear();
+		listing.clearSelections();
+		listing.setUserFilter("");
 		listing.setExtensionFilter(filter);
 		requestOpen = true;
 		return true;
@@ -186,6 +189,10 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 
 	// save new path
 	state.currentPath = canonicalPath;
+
+	// reset selections
+	selectedPath.clear();
+	selectedPaths.clear();
 
 	// build a stack of path parts (in reverse order)
 	pathStack.clear();
@@ -429,88 +436,11 @@ void FileSelector::renderListView(ImVec2 size) {
 				ImGuiSelectableFlags_AllowDoubleClick;
 
 			if (ImGui::Selectable(reinterpret_cast<const char*>(entry.nameString.c_str()), entry.isSelected, selectableFlags)) {
-				if (entry.isDirectory) {
-					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-						nextPath = entry.path;
-
-					} else if (mode == Mode::selectDirectory) {
-						listing.clearSelections();
-						selectedPath = entry.path;
-						entry.isSelected = true;
-					}
-
-				} else {
-					switch (mode) {
-						case Mode::openFile: {
-							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-								selectedPath = entry.path;
-								action = Action::selectedOpenFile;
-
-							} else {
-								listing.clearSelections();
-								selectedPath = entry.path;
-								entry.isSelected = true;
-							}
-
-							break;
-						}
-
-						case Mode::saveAs: {
-							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-								selectedPath = entry.path;
-								action = Action::selectedSaveAs;
-
-							} else {
-								listing.clearSelections();
-								selectedPath = entry.path;
-								entry.isSelected = true;
-							}
-
-							break;
-						}
-
-						case Mode::selectFiles: {
-							if (ImGui::IsKeyDown(ImGuiMod_Shift)) {
-								if (entry.isSelected) {
-									selectedPaths.erase(
-										std::remove(
-											selectedPaths.begin(),
-											selectedPaths.end(),
-											entry.path),
-										selectedPaths.end());
-
-									entry.isSelected = false;
-
-								} else {
-									selectedPaths.emplace_back(entry.path);
-									entry.isSelected = true;
-								}
-
-								entry.isSelected = !entry.isSelected;
-
-							}
-
-							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-								selectedPath = entry.path;
-								action = Action::selectedFiles;
-
-							} else {
-								listing.clearSelections();
-								selectedPath = entry.path;
-								entry.isSelected = true;
-							}
-
-							break;
-						}
-
-						default:
-							break;
-					}
-				}
+				handleEntrySelection(entry);
 			}
 
 			if (ImGui::BeginPopupContextItem()) {
-				if (ImGui::MenuItem(labels.rename.c_str()))   {}
+				if (ImGui::MenuItem(labels.rename.c_str())) {}
 				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {}
 				if (ImGui::MenuItem(labels.duplicate.c_str())) {}
 				ImGui::EndPopup();
@@ -554,27 +484,23 @@ void FileSelector::renderActionButtons() {
 	// handle cancel button and shortcut
 	if (ImGui::Button(labels.cancel.c_str(), size) ||ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
 		selectedPath.clear();
+		selectedPaths.clear();
 		action = Action::cancelled;
 	}
 
 	// handle OK button (disable when nothing is selected)
 	ImGui::SameLine();
+	auto okAvailable = isOkAvailable();
 
-	if (selectedPath.empty()) {
+	if (!okAvailable) {
 		ImGui::BeginDisabled();
 	}
 
 	if (ImGui::Button(labels.ok.c_str(), size)) {
-		switch (mode) {
-			case Mode::openFile: action = Action::selectedOpenFile; break;
-			case Mode::saveAs: action = Action::selectedSaveAs; break;
-			case Mode::selectFiles: action = Action::selectedFiles; break;
-			case Mode::selectDirectory: action = Action::selectedDirectory; break;
-			default: break;
-		}
+		handleOk();
 	}
 
-	if (selectedPath.empty()) {
+	if (!okAvailable) {
 		ImGui::EndDisabled();
 	}
 }
@@ -604,94 +530,6 @@ void FileSelector::renderPopups() {
 
 		ImGui::EndPopup();
 	}
-}
-
-
-//
-//	FileSelector::grouping
-//
-
-bool FileSelector::grouping(const char* label, bool* expanded) {
-	// determine position and space
-	auto pos = ImGui::GetCursorScreenPos();
-	auto size = ImGui::GetContentRegionAvail();
-	size.y = glyphSize.y;
-
-	// run button action
-	bool changed = ImGui::InvisibleButton(label, size);
-
-	if (changed) {
-		*expanded = !*expanded;
-	}
-
-	// render label and state
-	auto drawList = ImGui::GetWindowDrawList();
-	auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
-	drawList->AddText(pos, color, label);
-
-	if (ImGui::IsItemHovered()) {
-		auto right = pos + ImVec2(size.x - glyphSize.x, 0.0f);
-		ImVec2 p1 = ImVec2(right + ImVec2(0.0f, glyphSize.y * 0.3f));
-		ImVec2 p2 = right + (*expanded ? ImVec2(glyphSize.x * 0.5f, glyphSize.y * 0.7f) : ImVec2(glyphSize.x, glyphSize.y * 0.5f));
-		ImVec2 p3 = right + (*expanded ? ImVec2(glyphSize.x, glyphSize.y * 0.3f) : ImVec2(0.0f, glyphSize.y * 0.7f));
-		drawList->AddLine(p1, p2, color);
-		drawList->AddLine(p2, p3, color);
-	}
-
-	// run result
-	return changed;
-}
-
-
-//
-//	FileSelector::spacing
-//
-
-void FileSelector::spacing() {
-	auto pos = ImGui::GetCursorScreenPos();
-	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + frameHeight * 0.4f));
-}
-
-
-//
-//	FileSelector::inputString
-//
-
-bool FileSelector::inputString(const char* label, std::string* value) {
-	ImGuiInputTextFlags flags =
-		ImGuiInputTextFlags_NoUndoRedo |
-		ImGuiInputTextFlags_CallbackResize;
-
-	return ImGui::InputText(label, value->data(), value->capacity() + 1, flags, [](ImGuiInputTextCallbackData* data) {
-		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-			std::string* value = static_cast<std::string*>(data->UserData);
-			value->resize(data->BufTextLen);
-			data->Buf = (char*) value->c_str();
-		}
-
-		return 0;
-	}, value);
-}
-
-
-//
-//	FileSelector::inputStringWithHint
-//
-
-bool FileSelector::inputStringWithHint(const char* label, const char* hint, std::string* value) {
-	ImGuiInputTextFlags flags =
-		ImGuiInputTextFlags_NoUndoRedo |
-		ImGuiInputTextFlags_CallbackResize;
-
-	return ImGui::InputTextWithHint(label, hint, value->data(), value->capacity() + 1, flags, [](ImGuiInputTextCallbackData* data) {
-		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-			std::string* value = static_cast<std::string*>(data->UserData);
-			value->resize(data->BufTextLen);
-			data->Buf = (char*) value->c_str();
-		}
-
-		return 0;
-	}, value);
 }
 
 
@@ -749,6 +587,215 @@ void FileSelector::addDefaultMedia() {
 		media.add(KnownDirectory::music);
 		media.add(KnownDirectory::pictures);
 	}
+}
+
+
+//
+//	FileSelector::handleEntrySelection
+//
+
+void FileSelector::handleEntrySelection(Entry& entry) {
+	if (entry.isDirectory) {
+		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+			nextPath = entry.path;
+
+		} else if (mode == Mode::selectDirectory) {
+			listing.clearSelections();
+			selectedPath = entry.path;
+			entry.isSelected = true;
+		}
+
+	} else {
+		switch (mode) {
+			case Mode::openFile: {
+				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+					selectedPath = entry.path;
+					action = Action::selectedOpenFile;
+
+				} else if (entry.isSelected) {
+					listing.clearSelections();
+					selectedPath.clear();
+					entry.isSelected = false;
+
+				} else {
+					listing.clearSelections();
+					selectedPath = entry.path;
+					entry.isSelected = true;
+				}
+
+				break;
+			}
+
+			case Mode::saveAs: {
+				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+					selectedPath = entry.path;
+					action = Action::selectedSaveAs;
+
+				} else {
+					saveAsString = entry.nameString;
+				}
+
+				break;
+			}
+
+			case Mode::selectFiles: {
+				if (ImGui::IsKeyDown(ImGuiMod_Shift)) {
+					if (entry.isSelected) {
+						selectedPaths.erase(
+							std::remove(
+								selectedPaths.begin(),
+								selectedPaths.end(),
+								entry.path),
+							selectedPaths.end());
+
+						entry.isSelected = false;
+
+					} else {
+						selectedPaths.emplace_back(entry.path);
+						entry.isSelected = true;
+					}
+
+					entry.isSelected = !entry.isSelected;
+
+				}
+
+				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+					selectedPath = entry.path;
+					action = Action::selectedFiles;
+
+				} else {
+					listing.clearSelections();
+					selectedPath = entry.path;
+					entry.isSelected = true;
+				}
+
+				break;
+			}
+
+			default:
+				break;
+		}
+	}
+}
+
+
+//
+//	FileSelector::isOkAvailable
+//
+
+bool FileSelector::isOkAvailable() {
+	switch (mode) {
+		case Mode::openFile: return !selectedPath.empty(); break;
+		case Mode::saveAs: return saveAsString.size(); break;
+		case Mode::selectFiles: selectedPaths.size(); break;
+		case Mode::selectDirectory: return !selectedPath.empty(); break;
+		default: break;
+	}
+
+	return false;
+}
+
+
+//
+//	FileSelector::handleOk
+//
+
+void FileSelector::handleOk() {
+	switch (mode) {
+		case Mode::openFile: action = Action::selectedOpenFile; break;
+		case Mode::saveAs: selectedPath = state.currentPath / saveAsString; action = Action::selectedSaveAs; break;
+		case Mode::selectFiles: action = Action::selectedFiles; break;
+		case Mode::selectDirectory: action = Action::selectedDirectory; break;
+		default: break;
+	}
+}
+
+
+//
+//	FileSelector::spacing
+//
+
+void FileSelector::spacing() {
+	auto pos = ImGui::GetCursorScreenPos();
+	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + frameHeight * 0.4f));
+}
+
+
+//
+//	FileSelector::grouping
+//
+
+bool FileSelector::grouping(const char* label, bool* expanded) {
+	// determine position and space
+	auto pos = ImGui::GetCursorScreenPos();
+	auto size = ImGui::GetContentRegionAvail();
+	size.y = glyphSize.y;
+
+	// run button action
+	bool changed = ImGui::InvisibleButton(label, size);
+
+	if (changed) {
+		*expanded = !*expanded;
+	}
+
+	// render label and state
+	auto drawList = ImGui::GetWindowDrawList();
+	auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+	drawList->AddText(pos, color, label);
+
+	if (ImGui::IsItemHovered()) {
+		auto right = pos + ImVec2(size.x - glyphSize.x, 0.0f);
+		ImVec2 p1 = ImVec2(right + ImVec2(0.0f, glyphSize.y * 0.3f));
+		ImVec2 p2 = right + (*expanded ? ImVec2(glyphSize.x * 0.5f, glyphSize.y * 0.7f) : ImVec2(glyphSize.x, glyphSize.y * 0.5f));
+		ImVec2 p3 = right + (*expanded ? ImVec2(glyphSize.x, glyphSize.y * 0.3f) : ImVec2(0.0f, glyphSize.y * 0.7f));
+		drawList->AddLine(p1, p2, color);
+		drawList->AddLine(p2, p3, color);
+	}
+
+	// run result
+	return changed;
+}
+
+
+//
+//	FileSelector::inputString
+//
+
+bool FileSelector::inputString(const char* label, std::string* value) {
+	ImGuiInputTextFlags flags =
+		ImGuiInputTextFlags_NoUndoRedo |
+		ImGuiInputTextFlags_CallbackResize;
+
+	return ImGui::InputText(label, value->data(), value->capacity() + 1, flags, [](ImGuiInputTextCallbackData* data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			std::string* value = static_cast<std::string*>(data->UserData);
+			value->resize(data->BufTextLen);
+			data->Buf = (char*) value->c_str();
+		}
+
+		return 0;
+	}, value);
+}
+
+
+//
+//	FileSelector::inputStringWithHint
+//
+
+bool FileSelector::inputStringWithHint(const char* label, const char* hint, std::string* value) {
+	ImGuiInputTextFlags flags =
+		ImGuiInputTextFlags_NoUndoRedo |
+		ImGuiInputTextFlags_CallbackResize;
+
+	return ImGui::InputTextWithHint(label, hint, value->data(), value->capacity() + 1, flags, [](ImGuiInputTextCallbackData* data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			std::string* value = static_cast<std::string*>(data->UserData);
+			value->resize(data->BufTextLen);
+			data->Buf = (char*) value->c_str();
+		}
+
+		return 0;
+	}, value);
 }
 
 

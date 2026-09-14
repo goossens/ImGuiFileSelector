@@ -357,16 +357,20 @@ private:
 	void renderListView(ImVec2 size);
 	void renderActionButtons();
 	void renderPopups();
-	bool grouping(const char* label, bool* expanded);
-
-	void spacing();
-	static bool inputString(const char* label, std::string* value);
-	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);
 
 	void addDefaultFavorites();
 	void addDefaultClouds();
 	void addDefaultLocations();
 	void addDefaultMedia();
+
+	void handleEntrySelection(Entry& entry);
+	bool isOkAvailable();
+	void handleOk();
+
+	void spacing();
+	bool grouping(const char* label, bool* expanded);
+	static bool inputString(const char* label, std::string* value);
+	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);
 
 	static std::filesystem::path getHome();
 	static bool isHidden(const std::filesystem::path& path);
