@@ -128,8 +128,10 @@ bool FileSelector::Render() {
 		ImGuiWindowFlags_NoScrollbar;
 
 	if (ImGui::BeginPopupModal("###ImGuiFileSelector", nullptr, windowFlags)) {
+		// handle dialog and possible popups
 		action = Action::none;
 		renderFileDialog();
+		renderPopups();
 
 		// see if user made selection
 		if (action != Action::none && action != Action::cancelled) {
@@ -155,8 +157,6 @@ bool FileSelector::Render() {
 			mode = Mode::idle;
 		}
 
-		// handle possible popups
-		renderPopups();
 		ImGui::EndPopup();
 	}
 
@@ -523,6 +523,29 @@ void FileSelector::renderActionButtons() {
 //
 
 void FileSelector::renderPopups() {
+	// handle overwrite window
+		if (openOverWrite) {
+		ImGui::OpenPopup(labels.confirmationWindow.c_str());
+		openOverWrite = false;
+	}
+
+	if (ImGui::BeginPopupModal(labels.confirmationWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::TextUnformatted(labels.fileExists.c_str());
+
+		if (ImGui::Button(labels.cancel.c_str())) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::Button(labels.ok.c_str())) {
+			action = Action::selectedSaveAs;
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+
 	// handle error window
 	if (openErrorMessage) {
 		ImGui::OpenPopup(labels.errorWindow.c_str());
@@ -641,7 +664,13 @@ void FileSelector::handleEntrySelection(Entry& entry) {
 			case Mode::saveAs: {
 				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 					selectedPath = entry.path;
-					action = Action::selectedSaveAs;
+
+					if (std::filesystem::exists(selectedPath)) {
+						openOverWrite = true;
+
+					} else {
+						action = Action::selectedSaveAs;
+					}
 
 				} else {
 					saveAsString = entry.nameString;
@@ -705,7 +734,14 @@ void FileSelector::handleOk() {
 
 		case Mode::saveAs:
 			selectedPath = state.currentPath / saveAsString;
-			action = Action::selectedSaveAs;
+
+			if (std::filesystem::exists(selectedPath)) {
+				openOverWrite = true;
+
+			} else {
+				action = Action::selectedSaveAs;
+			}
+
 			break;
 
 		case Mode::selectFiles:

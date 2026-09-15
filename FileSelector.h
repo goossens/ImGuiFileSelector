@@ -160,6 +160,7 @@ public:
 		std::string recentPlaces;
 		std::string confirmationWindow;
 		std::string errorWindow;
+		std::string fileExists;
 		std::string rename;
 		std::string duplicate;
 		std::string moveToTrash;
@@ -197,6 +198,7 @@ private:
 		"Recent Places",
 		"Confirmation...",
 		"Error...",
+		"File Exists, do you want to overwrite it?",
 		"Rename",
 		"Move to Trash",
 		"Duplicate",
@@ -340,6 +342,9 @@ private:
 	SideBarGroup clouds;
 	SideBarGroup locations;
 	SideBarGroup media;
+
+	// handle confirm overwrite
+	bool openOverWrite = false;
 
 	// error handling
 	std::string errorMessage;
