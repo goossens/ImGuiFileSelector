@@ -391,8 +391,18 @@ void FileSelector::renderHeader() {
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.75f, pos.y));
 	ImGui::SetNextItemWidth(width * 0.25f);
 
+	ImGui::PushStyleColor(ImGuiCol_FrameBg, listing.isUserFilterValid()
+		? ImGui::GetColorU32(ImGuiCol_FrameBg)
+		: IM_COL32(255, 32, 32, 128));
+
 	if (inputStringWithHint("###filter", labels.filter.c_str(), &filterString)) {
 		listing.setUserFilter(filterString);
+	}
+
+	ImGui::PopStyleColor();
+
+	if (!listing.isUserFilterValid()) {
+		ImGui::SetItemTooltip("%s", listing.getError().c_str());
 	}
 
 	spacing();
@@ -978,11 +988,12 @@ void FileSelector::Listing::setExtensionFilter(const std::string& filter) {
 //
 
 void FileSelector::Listing::setUserFilter(const std::string& filter) {
+	filterValid = true;
+
 	if (filter.size()) {
 		try {
 			filterRegex.assign(filter, std::regex_constants::icase);
 			filterActive = true;
-			filterValid = true;
 			error.clear();
 
 		} catch (const std::regex_error& e) {

@@ -284,6 +284,10 @@ private:
 		void setExtensionFilter(const std::string& filter);
 		void setUserFilter(const std::string& filter);
 
+		// get status
+		inline bool isUserFilterValid() const { return filterValid; }
+		inline const std::string& getError() const { return error; }
+
 		// iterate through listing
 		void forEach(std::function<void(Entry&)> callback);
 
