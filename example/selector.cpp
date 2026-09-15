@@ -77,13 +77,38 @@ void Selector::render() {
 		logger.Add("Opened save as");
 	}
 
+	ImGui::SameLine();
+
+	if (ImGui::Button("Select Files")) {
+		selector.SelectFiles();
+		logger.Add("Opened select files");
+	}
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("Select Directory")) {
+		selector.SelectDirectory();
+		logger.Add("Opened select directory");
+	}
+
 	// render the selector each frame (if there is a need for it; handled internally)
 	if (selector.Render()) {
 		if (selector.SelectedOpenFile()) {
-			logger.Add((std::string("File [") + selector.GetSelectedPath().string() + "] selected for open").c_str());
+			logger.Add("File [" + selector.GetSelectedPath().string() + "] selected for open");
 
 		} else if (selector.SelectedSaveAs()) {
-			logger.Add((std::string("File [") + selector.GetSelectedPath().string() + "] selected for save as").c_str());
+			logger.Add("File [" + selector.GetSelectedPath().string() + "] selected for save as");
+
+		} else if (selector.SelectedFiles()) {
+			auto& paths = selector.GetSelectedPaths();
+			logger.Add(paths.size() == 1 ? "File selected:" : "Files selected:");
+
+			for (auto& path : paths) {
+				logger.Add("[" + path.string() + "]");
+			}
+
+		} else if (selector.SelectedDirectory()) {
+			logger.Add("Directory [" + selector.GetSelectedPath().string() + "] selected");
 
 		} else if (selector.WasCancelled()) {
 			logger.Add("Selector cancelled");

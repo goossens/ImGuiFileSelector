@@ -103,6 +103,7 @@ public:
 	inline bool SelectedDirectory() const { return action == Action::selectedDirectory; }
 
 	inline const std::filesystem::path& GetSelectedPath() const { return selectedPath; }
+	inline const std::vector<std::filesystem::path>& GetSelectedPaths() const { return selectedPaths; }
 
 	// render the file selector widget
 	// it is safe to call this every frame as it's a NOOP if no selectors are active
@@ -141,6 +142,9 @@ public:
 
 	// internationalization support
 	struct Labels {
+		std::string open;
+		std::string save;
+		std::string select;
 		std::string ok;
 		std::string cancel;
 		std::string nameColumn;
@@ -175,6 +179,9 @@ public:
 private:
 	// configuration
 	Labels labels = {
+		"Open",
+		"Save",
+		"Select",
 		"OK",
 		"Cancel",
 		"Name",
@@ -290,6 +297,7 @@ private:
 		bool showHidden = false;
 		std::vector<std::string> extensions;
 		bool filterActive = false;
+		bool filterValid = false;
 		std::regex filterRegex;
 		std::string error;
 
@@ -371,6 +379,7 @@ private:
 	bool grouping(const char* label, bool* expanded);
 	static bool inputString(const char* label, std::string* value);
 	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);
+	static bool inputPath(const char* label, std::string* value);
 
 	static std::filesystem::path getHome();
 	static bool isHidden(const std::filesystem::path& path);

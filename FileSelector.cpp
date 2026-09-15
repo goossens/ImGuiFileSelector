@@ -323,8 +323,12 @@ void FileSelector::renderHeader() {
 		ImGui::TextUnformatted(labels.saveAs.c_str());
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(saveAsWidth);
-		ImGui::SetKeyboardFocusHere();
-		inputString("###saveas", &saveAsString);
+
+		if (ImGui::IsWindowAppearing()) {
+			ImGui::SetKeyboardFocusHere();
+		}
+
+		inputPath("###saveas", &saveAsString);
 		spacing();
 	}
 
@@ -474,15 +478,23 @@ void FileSelector::renderActionButtons() {
 
 	ImGui::SameLine();
 
+	// select label of "OK" button
+	std::string& okLabel = (mode == Mode::openFile) ? labels.open : (mode == Mode::saveAs) ? labels.save : labels.select;
+
 	// right align buttons
-	auto availableSpace = ImGui::GetContentRegionAvail();
-	auto size = ImVec2((std::max(labels.ok.size(), labels.cancel.size()) + 2) * glyphSize.x, 0.0f);
 	auto pos = ImGui::GetCursorScreenPos();
+	auto availableSpace = ImGui::GetContentRegionAvail();
+
+	auto size = ImVec2(
+		std::max(
+			ImGui::CalcTextSize(okLabel.c_str()).x,
+			ImGui::CalcTextSize(labels.cancel.c_str()).x) + glyphSize.x * 2.0f,
+		0.0f);
 
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
 
 	// handle cancel button and shortcut
-	if (ImGui::Button(labels.cancel.c_str(), size) ||ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
+	if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
 		selectedPath.clear();
 		selectedPaths.clear();
 		action = Action::cancelled;
@@ -496,7 +508,7 @@ void FileSelector::renderActionButtons() {
 		ImGui::BeginDisabled();
 	}
 
-	if (ImGui::Button(labels.ok.c_str(), size)) {
+	if (ImGui::Button(okLabel.c_str(), size) || (okAvailable && ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteAlways))) {
 		handleOk();
 	}
 
@@ -639,33 +651,18 @@ void FileSelector::handleEntrySelection(Entry& entry) {
 			}
 
 			case Mode::selectFiles: {
-				if (ImGui::IsKeyDown(ImGuiMod_Shift)) {
-					if (entry.isSelected) {
-						selectedPaths.erase(
-							std::remove(
-								selectedPaths.begin(),
-								selectedPaths.end(),
-								entry.path),
-							selectedPaths.end());
+				if (entry.isSelected) {
+					selectedPaths.erase(
+						std::remove(
+							selectedPaths.begin(),
+							selectedPaths.end(),
+							entry.path),
+						selectedPaths.end());
 
-						entry.isSelected = false;
-
-					} else {
-						selectedPaths.emplace_back(entry.path);
-						entry.isSelected = true;
-					}
-
-					entry.isSelected = !entry.isSelected;
-
-				}
-
-				if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-					selectedPath = entry.path;
-					action = Action::selectedFiles;
+					entry.isSelected = false;
 
 				} else {
-					listing.clearSelections();
-					selectedPath = entry.path;
+					selectedPaths.emplace_back(entry.path);
 					entry.isSelected = true;
 				}
 
@@ -687,8 +684,8 @@ bool FileSelector::isOkAvailable() {
 	switch (mode) {
 		case Mode::openFile: return !selectedPath.empty(); break;
 		case Mode::saveAs: return saveAsString.size(); break;
-		case Mode::selectFiles: selectedPaths.size(); break;
-		case Mode::selectDirectory: return !selectedPath.empty(); break;
+		case Mode::selectFiles: return selectedPaths.size(); break;
+		case Mode::selectDirectory: return true; break;
 		default: break;
 	}
 
@@ -702,11 +699,29 @@ bool FileSelector::isOkAvailable() {
 
 void FileSelector::handleOk() {
 	switch (mode) {
-		case Mode::openFile: action = Action::selectedOpenFile; break;
-		case Mode::saveAs: selectedPath = state.currentPath / saveAsString; action = Action::selectedSaveAs; break;
-		case Mode::selectFiles: action = Action::selectedFiles; break;
-		case Mode::selectDirectory: action = Action::selectedDirectory; break;
-		default: break;
+		case Mode::openFile:
+			action = Action::selectedOpenFile;
+			break;
+
+		case Mode::saveAs:
+			selectedPath = state.currentPath / saveAsString;
+			action = Action::selectedSaveAs;
+			break;
+
+		case Mode::selectFiles:
+			action = Action::selectedFiles;
+			break;
+
+		case Mode::selectDirectory:
+			if (selectedPath.empty()) {
+				selectedPath = state.currentPath;
+			}
+
+			action = Action::selectedDirectory;
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -792,6 +807,39 @@ bool FileSelector::inputStringWithHint(const char* label, const char* hint, std:
 			std::string* value = static_cast<std::string*>(data->UserData);
 			value->resize(data->BufTextLen);
 			data->Buf = (char*) value->c_str();
+		}
+
+		return 0;
+	}, value);
+}
+
+
+//
+//	FileSelector::inputPath
+//
+
+bool FileSelector::inputPath(const char* label, std::string* value) {
+	ImGuiInputTextFlags flags =
+		ImGuiInputTextFlags_NoUndoRedo |
+		ImGuiInputTextFlags_CallbackResize |
+		ImGuiInputTextFlags_CallbackCharFilter;
+
+	return ImGui::InputText(label, value->data(), value->capacity() + 1, flags, [](ImGuiInputTextCallbackData* data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			std::string* value = static_cast<std::string*>(data->UserData);
+			value->resize(data->BufTextLen);
+			data->Buf = (char*) value->c_str();
+
+		} else if (data->EventFlag == ImGuiInputTextFlags_CallbackCharFilter) {
+			// MacOS illegal: /:
+			// Linux illegal: /
+			// Windows illegal: <>:\"/\\|?*
+			// web undesirable: %&#+={}
+			static const std::string illegalChars = "<>:\"/\\|?*%&#+={}";
+
+			if (illegalChars.find(static_cast<char>(data->EventChar)) != std::string::npos) {
+				return 1;
+			}
 		}
 
 		return 0;
@@ -898,10 +946,12 @@ void FileSelector::Listing::setUserFilter(const std::string& filter) {
 		try {
 			filterRegex.assign(filter, std::regex_constants::icase);
 			filterActive = true;
+			filterValid = true;
 			error.clear();
 
 		} catch (const std::regex_error& e) {
 			filterActive = false;
+			filterValid = false;
 			error = e.what();
 		}
 
