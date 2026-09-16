@@ -146,6 +146,7 @@ public:
 		std::string save;
 		std::string select;
 		std::string create;
+		std::string rename;
 		std::string ok;
 		std::string cancel;
 		std::string nameColumn;
@@ -164,7 +165,6 @@ public:
 		std::string confirmationWindow;
 		std::string errorWindow;
 		std::string fileExists;
-		std::string rename;
 		std::string duplicate;
 		std::string moveToTrash;
 		std::string timeFormat;
@@ -187,6 +187,7 @@ private:
 		"Save",
 		"Select",
 		"Create",
+		"Rename",
 		"OK",
 		"Cancel",
 		"Name",
@@ -205,7 +206,6 @@ private:
 		"Confirmation...",
 		"Error...",
 		"File Exists, do you want to overwrite it?",
-		"Rename",
 		"Move to Trash",
 		"Duplicate",
 		"%b %d, %Y at %I:%M %p",
@@ -364,6 +364,13 @@ private:
 	// handle new folder
 	bool openNewFolder = false;
 	std::string newFolderName;
+	std::string newFolderError;
+
+	// handle rename
+	bool openRename = false;
+	std::string oldMoveName;
+	std::string newMoveName;
+	std::string moveError;
 
 	// work variables
 	float frameHeight;
@@ -384,6 +391,9 @@ private:
 	void renderListView(ImVec2 size);
 	void renderActionButtons();
 	void renderPopups();
+	void renderOverWritePopup();
+	void renderNewFolderPopup();
+	void renderRenamePopup();
 
 	void addDefaultFavorites();
 	void addDefaultClouds();

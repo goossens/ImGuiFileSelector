@@ -454,9 +454,19 @@ void FileSelector::renderListView(ImVec2 size) {
 			}
 
 			if (ImGui::BeginPopupContextItem()) {
-				if (ImGui::MenuItem(labels.rename.c_str())) {}
-				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {}
-				if (ImGui::MenuItem(labels.duplicate.c_str())) {}
+				if (ImGui::MenuItem(labels.rename.c_str())) {
+					openRename = true;
+					oldMoveName = entry.nameString;
+				}
+
+				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {
+
+				}
+
+				if (ImGui::MenuItem(labels.duplicate.c_str())) {
+
+				}
+
 				ImGui::EndPopup();
 			}
 
@@ -525,61 +535,18 @@ void FileSelector::renderActionButtons() {
 //
 
 void FileSelector::renderPopups() {
-	// handle new folder
-	bool appearing = false;
+	renderOverWritePopup();
+	renderNewFolderPopup();
+	renderRenamePopup();
+}
 
-	if (openNewFolder) {
-		ImGui::OpenPopup(labels.newFolder.c_str());
-		openNewFolder = false;
-		newFolderName.clear();
-		appearing = true;
-	}
 
-	if (ImGui::BeginPopupModal(labels.newFolder.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-		ImGui::TextUnformatted(labels.nameOfNewFolder.c_str());
+//
+//	FileSelector::renderOverWritePopup
+//
 
-		spacing();
-
-		if (appearing) {
-			ImGui::SetKeyboardFocusHere();
-		}
-
-		inputPath("###newfolder", &newFolderName);
-		bool emptyName = newFolderName.empty();
-		bool invalidName = std::filesystem::exists(state.currentPath / newFolderName);
-
-		if (!emptyName && invalidName) {
-			ImGui::TextUnformatted(labels.nameTaken.c_str());
-		}
-
-		spacing();
-		auto size = rightAlign(labels.cancel, labels.create);
-
-		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
-			ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::SameLine();
-
-		if (emptyName || invalidName) {
-			ImGui::BeginDisabled();
-		}
-
-		if (ImGui::Button(labels.create.c_str(), size) || ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteOverActive)) {
-			std::filesystem::create_directory(state.currentPath / newFolderName);
-			listing.reload();
-			ImGui::CloseCurrentPopup();
-		}
-
-		if (emptyName || invalidName) {
-			ImGui::EndDisabled();
-		}
-
-		ImGui::EndPopup();
-	}
-
-	// handle overwrite window
-		if (openOverWrite) {
+void FileSelector::renderOverWritePopup() {
+	if (openOverWrite) {
 		ImGui::OpenPopup(labels.confirmationWindow.c_str());
 		openOverWrite = false;
 	}
@@ -600,6 +567,146 @@ void FileSelector::renderPopups() {
 		if (ImGui::Button(labels.ok.c_str(), size)) {
 			action = Action::selectedSaveAs;
 			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+
+//
+//	FileSelector::renderNewFolderPopup
+//
+
+void FileSelector::renderNewFolderPopup() {
+	bool appearing = false;
+
+	if (openNewFolder) {
+		ImGui::OpenPopup(labels.newFolder.c_str());
+		openNewFolder = false;
+		newFolderName.clear();
+		newFolderError.clear();
+		appearing = true;
+	}
+
+	if (ImGui::BeginPopupModal(labels.newFolder.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::TextUnformatted(labels.nameOfNewFolder.c_str());
+
+		spacing();
+
+		if (appearing) {
+			ImGui::SetKeyboardFocusHere();
+		}
+
+		inputPath("###newfolder", &newFolderName);
+		bool emptyName = newFolderName.empty();
+		bool invalidName = std::filesystem::exists(state.currentPath / newFolderName);
+
+		if (!emptyName && invalidName) {
+			ImGui::TextDisabled("%s", labels.nameTaken.c_str());
+		}
+
+		if (newFolderError.size()) {
+			ImGui::TextDisabled("%s", newFolderError.c_str());
+		}
+
+		spacing();
+		auto size = rightAlign(labels.cancel, labels.create);
+
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::SameLine();
+
+		if (emptyName || invalidName) {
+			ImGui::BeginDisabled();
+		}
+
+		if (ImGui::Button(labels.create.c_str(), size) || ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteOverActive)) {
+			std::error_code ec;
+			std::filesystem::create_directory(state.currentPath / newFolderName, ec);
+
+			if (ec) {
+				newFolderError = ec.message();
+
+			} else {
+				listing.reload();
+				ImGui::CloseCurrentPopup();
+			}
+		}
+
+		if (emptyName || invalidName) {
+			ImGui::EndDisabled();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+
+//
+//	FileSelector::renderRenamePopup
+//
+
+void FileSelector::renderRenamePopup() {
+	bool appearing = false;
+
+	if (openRename) {
+		ImGui::OpenPopup(labels.rename.c_str());
+		openRename = false;
+		newMoveName = oldMoveName;
+		moveError.clear();
+		appearing = true;
+	}
+
+	if (ImGui::BeginPopupModal(labels.rename.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		spacing();
+
+		if (appearing) {
+			ImGui::SetKeyboardFocusHere();
+		}
+
+		inputPath("###newname", &newMoveName);
+		bool emptyName = newMoveName.empty();
+		bool invalidName = std::filesystem::exists(state.currentPath / newMoveName);
+
+		if (!emptyName && invalidName) {
+			ImGui::TextDisabled("%s", labels.nameTaken.c_str());
+		}
+
+		if (moveError.size()) {
+			ImGui::TextDisabled("%s", moveError.c_str());
+		}
+
+		spacing();
+		auto size = rightAlign(labels.cancel, labels.rename);
+
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::SameLine();
+
+		if (emptyName || invalidName) {
+			ImGui::BeginDisabled();
+		}
+
+		if (ImGui::Button(labels.rename.c_str(), size) || ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteOverActive)) {
+			std::error_code ec;
+			std::filesystem::rename(state.currentPath / oldMoveName, state.currentPath / newMoveName, ec);
+
+			if (ec) {
+				moveError = ec.message();
+
+			} else {
+				listing.reload();
+				ImGui::CloseCurrentPopup();
+			}
+		}
+
+		if (emptyName || invalidName) {
+			ImGui::EndDisabled();
 		}
 
 		ImGui::EndPopup();
