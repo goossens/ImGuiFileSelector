@@ -145,6 +145,7 @@ public:
 		std::string open;
 		std::string save;
 		std::string select;
+		std::string create;
 		std::string ok;
 		std::string cancel;
 		std::string nameColumn;
@@ -157,6 +158,8 @@ public:
 		std::string media;
 		std::string saveAs;
 		std::string newFolder;
+		std::string nameOfNewFolder;
+		std::string nameTaken;
 		std::string recentPlaces;
 		std::string confirmationWindow;
 		std::string errorWindow;
@@ -183,6 +186,7 @@ private:
 		"Open",
 		"Save",
 		"Select",
+		"Create",
 		"OK",
 		"Cancel",
 		"Name",
@@ -195,6 +199,8 @@ private:
 		"Media",
 		"Save As:",
 		"New Folder",
+		"Name of new folder:",
+		"This name is already taken.",
 		"Recent Places",
 		"Confirmation...",
 		"Error...",
@@ -275,8 +281,12 @@ private:
 	// current directory listing
 	class Listing : public std::vector<Entry> {
 	public:
+		// constructor
+		Listing(Labels& labels) : labels(labels) {}
+
 		// load a specified path
-		bool load(const std::filesystem::path& path, const Labels& labels);
+		bool load(const std::filesystem::path& path);
+		inline bool reload() { return load(currentPath); }
 
 		// set filter parameters
 		inline void setShowHidden(bool show) { showHidden = show; }
@@ -296,6 +306,7 @@ private:
 
 	private:
 		// properties
+		Labels& labels;
 		std::filesystem::path currentPath;
 		std::filesystem::file_time_type lastWriteTime;
 		SortColumn sortColumn = SortColumn::name;
@@ -350,10 +361,9 @@ private:
 	// handle confirm overwrite
 	bool openOverWrite = false;
 
-	// error handling
-	std::string errorMessage;
-	std::string errorDetails;
-	bool openErrorMessage = false;
+	// handle new folder
+	bool openNewFolder = false;
+	std::string newFolderName;
 
 	// work variables
 	float frameHeight;
@@ -385,6 +395,7 @@ private:
 	void handleOk();
 
 	void spacing();
+	ImVec2 rightAlign(const std::string& button1, const std::string& button2);
 	bool grouping(const char* label, bool* expanded);
 	static bool inputString(const char* label, std::string* value);
 	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);

@@ -65,14 +65,14 @@ void Selector::render() {
 	}
 
 	// trigger file selectors through a button or shortcut
-	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteAlways)) {
+	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O)) {
 		selector.OpenFile();
 		logger.Add("Opened file selector");
 	}
 
 	ImGui::SameLine();
 
-	if (ImGui::Button("Save As") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteAlways)) {
+	if (ImGui::Button("Save As") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S)) {
 		selector.SaveAs();
 		logger.Add("Opened save as");
 	}

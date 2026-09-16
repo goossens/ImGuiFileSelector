@@ -27,7 +27,7 @@
 //	FileSelector::FileSelector
 //
 
-FileSelector::FileSelector() {
+FileSelector::FileSelector() : listing(labels) {
 	// set current path to current working directory
 	setCurrentPath(std::filesystem::current_path());
 
@@ -102,7 +102,7 @@ bool FileSelector::openDialog(Mode openMode, const std::string& filter) {
 //
 
 bool FileSelector::Render() {
-	// don't do anything if a file selector isn't open yet
+	// don't do anything if a file selector isn't open
 	if (mode == Mode::idle) {
 		return false;
 	}
@@ -128,7 +128,7 @@ bool FileSelector::Render() {
 		ImGuiWindowFlags_NoScrollbar;
 
 	if (ImGui::BeginPopupModal("###ImGuiFileSelector", nullptr, windowFlags)) {
-		// handle dialog and possible popups
+		// render dialog window and possible popups
 		action = Action::none;
 		renderFileDialog();
 		renderPopups();
@@ -183,7 +183,7 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 	}
 
 	// try to refresh the directory listing and check for errors
-	if (!listing.load(path, labels)) {
+	if (!listing.load(path)) {
 		return false;
 	}
 
@@ -484,27 +484,19 @@ void FileSelector::renderActionButtons() {
 
 	// add ability to create a new folder
 	if (ImGui::Button(labels.newFolder.c_str())) {
+		openNewFolder = true;
 	}
 
 	ImGui::SameLine();
 
-	// select label of "OK" button
+	// select label for "OK" button
 	std::string& okLabel = (mode == Mode::openFile) ? labels.open : (mode == Mode::saveAs) ? labels.save : labels.select;
 
 	// right align buttons
-	auto pos = ImGui::GetCursorScreenPos();
-	auto availableSpace = ImGui::GetContentRegionAvail();
-
-	auto size = ImVec2(
-		std::max(
-			ImGui::CalcTextSize(okLabel.c_str()).x,
-			ImGui::CalcTextSize(labels.cancel.c_str()).x) + glyphSize.x * 2.0f,
-		0.0f);
-
-	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
+	auto size = rightAlign(labels.cancel, okLabel);
 
 	// handle cancel button and shortcut
-	if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteAlways)) {
+	if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 		selectedPath.clear();
 		selectedPaths.clear();
 		action = Action::cancelled;
@@ -533,6 +525,59 @@ void FileSelector::renderActionButtons() {
 //
 
 void FileSelector::renderPopups() {
+	// handle new folder
+	bool appearing = false;
+
+	if (openNewFolder) {
+		ImGui::OpenPopup(labels.newFolder.c_str());
+		openNewFolder = false;
+		newFolderName.clear();
+		appearing = true;
+	}
+
+	if (ImGui::BeginPopupModal(labels.newFolder.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::TextUnformatted(labels.nameOfNewFolder.c_str());
+
+		spacing();
+
+		if (appearing) {
+			ImGui::SetKeyboardFocusHere();
+		}
+
+		inputPath("###newfolder", &newFolderName);
+		bool emptyName = newFolderName.empty();
+		bool invalidName = std::filesystem::exists(state.currentPath / newFolderName);
+
+		if (!emptyName && invalidName) {
+			ImGui::TextUnformatted(labels.nameTaken.c_str());
+		}
+
+		spacing();
+		auto size = rightAlign(labels.cancel, labels.create);
+
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::SameLine();
+
+		if (emptyName || invalidName) {
+			ImGui::BeginDisabled();
+		}
+
+		if (ImGui::Button(labels.create.c_str(), size) || ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteOverActive)) {
+			std::filesystem::create_directory(state.currentPath / newFolderName);
+			listing.reload();
+			ImGui::CloseCurrentPopup();
+		}
+
+		if (emptyName || invalidName) {
+			ImGui::EndDisabled();
+		}
+
+		ImGui::EndPopup();
+	}
+
 	// handle overwrite window
 		if (openOverWrite) {
 		ImGui::OpenPopup(labels.confirmationWindow.c_str());
@@ -540,36 +585,20 @@ void FileSelector::renderPopups() {
 	}
 
 	if (ImGui::BeginPopupModal(labels.confirmationWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		spacing();
 		ImGui::TextUnformatted(labels.fileExists.c_str());
 
-		if (ImGui::Button(labels.cancel.c_str())) {
+		spacing();
+		auto size = rightAlign(labels.cancel, labels.ok);
+
+		if (ImGui::Button(labels.cancel.c_str(), size)) {
 			ImGui::CloseCurrentPopup();
 		}
 
 		ImGui::SameLine();
 
-		if (ImGui::Button(labels.ok.c_str())) {
+		if (ImGui::Button(labels.ok.c_str(), size)) {
 			action = Action::selectedSaveAs;
-			ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::EndPopup();
-	}
-
-	// handle error window
-	if (openErrorMessage) {
-		ImGui::OpenPopup(labels.errorWindow.c_str());
-		openErrorMessage = false;
-	}
-
-	if (ImGui::BeginPopupModal(labels.errorWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-		ImGui::TextUnformatted(errorMessage.c_str());
-
-		if (errorDetails.size()) {
-			ImGui::SetItemTooltip("%s", errorDetails.c_str());
-		}
-
-		if (ImGui::Button(labels.ok.c_str())) {
 			ImGui::CloseCurrentPopup();
 		}
 
@@ -783,6 +812,26 @@ void FileSelector::spacing() {
 
 
 //
+//	FileSelector::rightAlign
+//
+
+ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& button2) {
+	// right align buttons
+	auto pos = ImGui::GetCursorScreenPos();
+	auto availableSpace = ImGui::GetContentRegionAvail();
+
+	auto size = ImVec2(
+		std::max(
+			ImGui::CalcTextSize(button1.c_str()).x,
+			ImGui::CalcTextSize(button2.c_str()).x) + glyphSize.x * 2.0f,
+		0.0f);
+
+	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
+	return size;
+}
+
+
+//
 //	FileSelector::grouping
 //
 
@@ -897,7 +946,7 @@ bool FileSelector::inputPath(const char* label, std::string* value) {
 //	FileSelector::Listing::load
 //
 
-bool FileSelector::Listing::load(const std::filesystem::path& path, const Labels& labels) {
+bool FileSelector::Listing::load(const std::filesystem::path& path) {
 	// we load to a temporary list first so we can detect errors
 	std::vector<Entry> entries;
 	bool success = true;
