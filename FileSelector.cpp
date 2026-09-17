@@ -85,7 +85,7 @@ bool FileSelector::openDialog(Mode openMode, const std::string& filter) {
 		saveAsString.clear();
 		selectedPath.clear();
 		selectedPaths.clear();
-		listing.clearSelections();
+		listing.reload();
 		listing.setUserFilter("");
 		listing.setExtensionFilter(filter);
 		requestOpen = true;
@@ -460,6 +460,13 @@ void FileSelector::renderListView(ImVec2 size) {
 				}
 
 				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {
+					if (moveToTrashCan(entry.path)) {
+						nextPath = state.currentPath;
+
+					} else {
+						errorMessage = "can't move to trash can.";
+						openError = true;
+					}
 
 				}
 
@@ -1768,10 +1775,10 @@ void FileSelector::forEachKnownLocation(std::function<void(const std::string& na
 
 
 //
-//	FileSelector::movePathToTrashCan
+//	FileSelector::moveToTrashCan
 //
 
-bool FileSelector::movePathToTrashCan(const std::filesystem::path& path) {
+bool FileSelector::moveToTrashCan(const std::filesystem::path& path) {
 	// determine absolute path with .. and symbolic links resolved
 	auto canonicalPath = std::filesystem::canonical(path);
 

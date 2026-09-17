@@ -439,5 +439,5 @@ private:
 	static bool isAccessible(const std::filesystem::path& path);
 	static void getKnownDirectoryInfo(KnownDirectory type, std::string& label, std::filesystem::path& path);
 	static void forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback);
-	static bool movePathToTrashCan(const std::filesystem::path& path);
+	static bool moveToTrashCan(const std::filesystem::path& path);
 };
