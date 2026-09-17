@@ -165,8 +165,9 @@ public:
 		std::string confirmationWindow;
 		std::string errorWindow;
 		std::string fileExists;
-		std::string duplicate;
 		std::string moveToTrash;
+		std::string duplicate;
+		std::string copy;
 		std::string timeFormat;
 		std::string bytes;
 		std::string kiloBytes;
@@ -208,6 +209,7 @@ private:
 		"File Exists, do you want to overwrite it?",
 		"Move to Trash",
 		"Duplicate",
+		"copy",
 		"%b %d, %Y at %I:%M %p",
 		"B ",
 		"KB",
@@ -358,19 +360,23 @@ private:
 	SideBarGroup locations;
 	SideBarGroup media;
 
-	// handle confirm overwrite
+	// confirm overwrite popup properties
 	bool openOverWrite = false;
 
-	// handle new folder
+	// new folder popup properties
 	bool openNewFolder = false;
 	std::string newFolderName;
 	std::string newFolderError;
 
-	// handle rename
+	// handle rename popup properties
 	bool openRename = false;
 	std::string oldMoveName;
 	std::string newMoveName;
 	std::string moveError;
+
+	// error popup properties
+	bool openError = false;
+	std::string errorMessage;
 
 	// work variables
 	float frameHeight;
@@ -394,6 +400,7 @@ private:
 	void renderOverWritePopup();
 	void renderNewFolderPopup();
 	void renderRenamePopup();
+	void renderErrorPopup();
 
 	void addDefaultFavorites();
 	void addDefaultClouds();
@@ -405,18 +412,13 @@ private:
 	void handleOk();
 
 	void spacing();
-	ImVec2 rightAlign(const std::string& button1, const std::string& button2);
+	ImVec2 rightAlign(const std::string& button1, const std::string& button2="");
 	bool grouping(const char* label, bool* expanded);
 	static bool inputString(const char* label, std::string* value);
 	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);
 	static bool inputPath(const char* label, std::string* value);
 
-	static std::filesystem::path getHome();
-	static bool isHidden(const std::filesystem::path& path);
-	static bool isAccessible(const std::filesystem::path& path);
-	static void getKnownDirectoryInfo(KnownDirectory type, std::string& label, std::filesystem::path& path);
-	static void forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback);
-	static bool movePathToTrashCan(const std::filesystem::path& path);
+	std::filesystem::path getDuplicatePathName(const std::filesystem::path& path);
 
 #if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
 	static inline std::string pathToString(const std::filesystem::path& path) {
@@ -430,4 +432,12 @@ private:
 		return path.u8string();
 	}
 #endif
+
+	// OS-specific local functions
+	static std::filesystem::path getHome();
+	static bool isHidden(const std::filesystem::path& path);
+	static bool isAccessible(const std::filesystem::path& path);
+	static void getKnownDirectoryInfo(KnownDirectory type, std::string& label, std::filesystem::path& path);
+	static void forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback);
+	static bool movePathToTrashCan(const std::filesystem::path& path);
 };

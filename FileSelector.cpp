@@ -182,7 +182,7 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 		return false;
 	}
 
-	// try to refresh the directory listing and check for errors
+	// try to reload the directory listing and check for errors
 	if (!listing.load(path)) {
 		return false;
 	}
@@ -464,7 +464,21 @@ void FileSelector::renderListView(ImVec2 size) {
 				}
 
 				if (ImGui::MenuItem(labels.duplicate.c_str())) {
+					std::error_code ec;
 
+					std::filesystem::copy(
+						entry.path,
+						getDuplicatePathName(entry.path),
+						std::filesystem::copy_options::recursive,
+						ec);
+
+					if (ec) {
+						errorMessage = ec.message();
+						openError = true;
+
+					} else {
+						nextPath = state.currentPath;
+					}
 				}
 
 				ImGui::EndPopup();
@@ -538,6 +552,7 @@ void FileSelector::renderPopups() {
 	renderOverWritePopup();
 	renderNewFolderPopup();
 	renderRenamePopup();
+	renderErrorPopup();
 }
 
 
@@ -707,6 +722,32 @@ void FileSelector::renderRenamePopup() {
 
 		if (emptyName || invalidName) {
 			ImGui::EndDisabled();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+
+//
+//	FileSelector::renderErrorPopup
+//
+
+void FileSelector::renderErrorPopup() {
+	if (openError) {
+		ImGui::OpenPopup(labels.errorWindow.c_str());
+		openError = false;
+	}
+
+	if (ImGui::BeginPopupModal(labels.errorWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		spacing();
+		ImGui::TextUnformatted(errorMessage.c_str());
+
+		spacing();
+		auto size = rightAlign(labels.ok);
+
+		if (ImGui::Button(labels.ok.c_str(), size)) {
+			ImGui::CloseCurrentPopup();
 		}
 
 		ImGui::EndPopup();
@@ -923,18 +964,28 @@ void FileSelector::spacing() {
 //
 
 ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& button2) {
-	// right align buttons
-	auto pos = ImGui::GetCursorScreenPos();
-	auto availableSpace = ImGui::GetContentRegionAvail();
+	if (button2.empty()) {
+		// right align button
+		auto pos = ImGui::GetCursorScreenPos();
+		auto availableSpace = ImGui::GetContentRegionAvail();
+		auto size = ImVec2(ImGui::CalcTextSize(button1.c_str()).x, 0.0f);
+		ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x, pos.y));
+		return size;
 
-	auto size = ImVec2(
-		std::max(
-			ImGui::CalcTextSize(button1.c_str()).x,
-			ImGui::CalcTextSize(button2.c_str()).x) + glyphSize.x * 2.0f,
-		0.0f);
+	} else {
+		// right align buttons
+		auto pos = ImGui::GetCursorScreenPos();
+		auto availableSpace = ImGui::GetContentRegionAvail();
 
-	ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
-	return size;
+		auto size = ImVec2(
+			std::max(
+				ImGui::CalcTextSize(button1.c_str()).x,
+				ImGui::CalcTextSize(button2.c_str()).x) + glyphSize.x * 2.0f,
+			0.0f);
+
+		ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x * 2.0f - itemSpacing.x, pos.y));
+		return size;
+	}
 }
 
 
@@ -1300,6 +1351,50 @@ std::string FileSelector::Entry::readableDate(const Labels& labels) {
 	std::stringstream ss;
 	ss << std::put_time(&localTime, labels.timeFormat.c_str());
 	return ss.str();
+}
+
+
+//
+//	FileSelector::getDuplicatePathName
+//
+
+std::filesystem::path FileSelector::getDuplicatePathName(const std::filesystem::path& path) {
+	// get path parts
+	auto parent = path.parent_path();
+	auto extension = path.extension().string();
+	auto stem = path.stem().string();
+
+	// adjust stem if it's already a copy
+	std::regex regex(" " + labels.copy + "( [0-9]+)?$");
+	std::smatch match;
+
+	if (std::regex_search(stem, match, regex)) {
+		stem = stem.substr(0, stem.size() - match.length());
+	}
+
+	// try the first macOS duplicate variant: "filename copy.ext"
+	auto candidate = parent / (stem + " " + labels.copy + extension);
+	auto done = false;
+	auto counter = 2;
+
+	if (!std::filesystem::exists(candidate)) {
+		done = true;
+	}
+
+	// if "filename copy.ext" also exists, start incrementing: "filename copy 2.ext", etc.
+	while (!done) {
+		candidate = parent / (stem + " " + labels.copy + " " + std::to_string(counter) + extension);
+
+		if (std::filesystem::exists(candidate)) {
+			counter++;
+
+		} else {
+			done = true;
+		}
+	}
+
+	// return path name for duplicate
+	return candidate;
 }
 
 
