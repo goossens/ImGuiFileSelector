@@ -26,7 +26,7 @@
 //
 //	This class implements a file selector dialog window for Dear ImGui. The layout
 //	for this dialog is inspired by MacOS but the look and feel is pure Dear ImGui.
-//	For now, the visualization is limited to the List view.
+//	For now, the visualization is limited to the List View.
 //
 
 class FileSelector {
@@ -47,8 +47,7 @@ public:
 		size
 	};
 
-	enum class SortOrder
-	 {
+	enum class SortOrder {
 		ascending,
 		descending
 	};
@@ -68,18 +67,22 @@ public:
 
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
+	// select path can be accessed through GetSelectedPath
 	bool OpenFile(const std::string& filter="");
 
 	// start a selector to pick a path to save content to
 	// returns true if selector is opened and false if a previous selector is still active
+	// select path can be accessed through GetSelectedPath
 	bool SaveAs();
 
 	// start a selector to select one or more files
 	// returns true if selector is opened and false if a previous selector is still active
+	// select paths can be accessed through GetSelectedPaths
 	bool SelectFiles(const std::string& filter="");
 
 	// start a selector to select a directory
 	// returns true if selector is opened and false if a previous selector is still active
+	// select path can be accessed through GetSelectedPath
 	bool SelectDirectory(const std::string& filter="");
 
 	// forcefully close the current selector
@@ -102,6 +105,7 @@ public:
 	inline bool SelectedFiles() const { return action == Action::selectedFiles; }
 	inline bool SelectedDirectory() const { return action == Action::selectedDirectory; }
 
+	// access selected path(s)
 	inline const std::filesystem::path& GetSelectedPath() const { return selectedPath; }
 	inline const std::vector<std::filesystem::path>& GetSelectedPaths() const { return selectedPaths; }
 
@@ -127,7 +131,7 @@ public:
 	inline void AddMedia(const std::string& name, const std::filesystem::path& path) { media.entries.emplace_back(name, path); }
 	inline void AddDefaultMedia() { addDefaultMedia(); }
 
-	// state access
+	// state access (to make it persistent across program runs; app is responsible to save/restore it)
 	struct State {
 		std::filesystem::path currentPath;
 		std::vector<std::filesystem::path> recentPlaces;
@@ -140,7 +144,7 @@ public:
 	const State& GetCurrentState() const { return state; }
 	void RestoreState(const State& newState) { state = newState; }
 
-	// internationalization support
+	// internationalization support (default language is US English)
 	struct Labels {
 		std::string open;
 		std::string save;
@@ -261,7 +265,7 @@ private:
 	std::vector<std::filesystem::path> selectedPaths;
 	bool requestOpen = false;
 
-	// directory traversal history in current session
+	// directory traversal history
 	std::vector<std::filesystem::path> pathHistory;
 	size_t historyIndex = 0;
 
@@ -278,7 +282,6 @@ private:
 
 	// single directory entry
 	struct Entry {
-		// informating about a single directory entry
 		std::filesystem::path path;
 		bool isDirectory;
 		std::uintmax_t size;
@@ -357,12 +360,14 @@ private:
 		std::vector<NamedPath> entries;
 		bool expanded = true;
 
+		// add new member based on a name and path
 		inline void add(const std::string& name, const std::filesystem::path& path) {
 			if (isAccessible(path)) {
 				entries.emplace_back(name, path);
 			}
 		}
 
+		// add new member based on a known directory ID
 		inline void add(KnownDirectory directory) {
 			std::string name;
 			std::filesystem::path path;

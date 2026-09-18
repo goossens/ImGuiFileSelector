@@ -80,6 +80,7 @@ bool FileSelector::SelectDirectory(const std::string& filter) {
 //
 
 bool FileSelector::openDialog(Mode openMode, const std::string& filter) {
+	// don't open multiple instances
 	if (mode == Mode::idle) {
 		mode = openMode;
 		saveAsString.clear();
@@ -238,6 +239,7 @@ void FileSelector::renderFileDialog() {
 	glyphSize = ImGui::CalcTextSize("#");
 	itemSpacing = ImGui::GetStyle().ItemSpacing;
 
+	// generate sidebar (if configured)
 	if (state.showSideBar) {
 		auto availableSpace = ImGui::GetContentRegionAvail();
 
@@ -253,6 +255,7 @@ void FileSelector::renderFileDialog() {
 		ImGui::SameLine();
 	}
 
+	// render main area
 	if (ImGui::BeginChild("mainArea", ImGui::GetContentRegionAvail())) {
 		renderHeader();
 		auto availableSpace = ImGui::GetContentRegionAvail();
@@ -270,6 +273,7 @@ void FileSelector::renderFileDialog() {
 //
 
 void FileSelector::renderSideBar() {
+	// render sidebar group (empty groups are skipped)
 	renderSideBarGroup(labels.favorites.c_str(), favorites);
 	renderSideBarGroup(labels.clouds.c_str(), clouds);
 	renderSideBarGroup(labels.locations.c_str(), locations);
@@ -282,16 +286,21 @@ void FileSelector::renderSideBar() {
 //
 
 void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& group) {
+	// skip empty groups
 	if (group.entries.size()) {
+		// render group label and expension toggle
 		grouping(label.c_str(), &(group.expanded));
 
+		// ensure group content is visible
 		if (group.expanded) {
 			ImGui::Indent();
 
+			// render all group entries
 			for (auto& entry : group.entries) {
 				ImGui::PushID(&entry);
 
 				if (ImGui::Selectable(reinterpret_cast<const char*>(entry.name.c_str()))) {
+					// select path if group entry is selected
 					nextPath = entry.path;
 				}
 
@@ -311,9 +320,11 @@ void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& gr
 //
 
 void FileSelector::renderHeader() {
+	// render header part of common area
 	auto width = ImGui::GetContentRegionAvail().x;
 	spacing();
 
+	// render filename input if we are in "SaveAs" mode
 	if (mode == Mode::saveAs) {
 		auto saveAsPos = ImGui::GetCursorScreenPos();
 		auto saveAsWidth = glyphSize.x * 30.0f;
@@ -332,6 +343,7 @@ void FileSelector::renderHeader() {
 		spacing();
 	}
 
+	// render history navigation buttons
 	auto pos = ImGui::GetCursorScreenPos();
 	auto disabled = historyIndex <= 1;
 	if (disabled) { ImGui::BeginDisabled(); }
@@ -353,6 +365,7 @@ void FileSelector::renderHeader() {
 
 	if (disabled) { ImGui::EndDisabled(); }
 
+	// render path selector and recent places
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.25f, pos.y));
 	float itemHeight = ImGui::GetTextLineHeightWithSpacing();
 	float popupHeight = itemHeight * 12 + ImGui::GetStyle().FramePadding.y * 4.0f;
@@ -387,10 +400,12 @@ void FileSelector::renderHeader() {
 		ImGui::EndCombo();
 	}
 
+	// render user filter input field
 	ImGui::SameLine();
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.75f, pos.y));
 	ImGui::SetNextItemWidth(width * 0.25f);
 
+	// mark filed as invalid if invalid regular expression is entered
 	ImGui::PushStyleColor(ImGuiCol_FrameBg, listing.isUserFilterValid()
 		? ImGui::GetColorU32(ImGuiCol_FrameBg)
 		: IM_COL32(255, 32, 32, 128));
@@ -401,6 +416,7 @@ void FileSelector::renderHeader() {
 
 	ImGui::PopStyleColor();
 
+	// show regular expression error as tooltip (if required)
 	if (!listing.isUserFilterValid()) {
 		ImGui::SetItemTooltip("%s", listing.getError().c_str());
 	}
@@ -414,7 +430,7 @@ void FileSelector::renderHeader() {
 //
 
 void FileSelector::renderListView(ImVec2 size) {
-	// build table of current nodes
+	// build table of current directory entries
 	ImGuiTableFlags tableFlags =
 		ImGuiTableFlags_ScrollY |
 		ImGuiTableFlags_RowBg |
@@ -453,6 +469,7 @@ void FileSelector::renderListView(ImVec2 size) {
 				handleEntrySelection(entry);
 			}
 
+			// render popup context menu for right click (ctrl-click on MacOS)
 			if (ImGui::BeginPopupContextItem()) {
 				if (ImGui::MenuItem(labels.rename.c_str())) {
 					openRename = true;
@@ -562,6 +579,7 @@ void FileSelector::renderActionButtons() {
 //
 
 void FileSelector::renderPopups() {
+	// render possible popup dialogs (these function do nothing unless triggered)
 	renderOverWritePopup();
 	renderNewFolderPopup();
 	renderRenamePopup();
@@ -575,11 +593,13 @@ void FileSelector::renderPopups() {
 //
 
 void FileSelector::renderOverWritePopup() {
+	// open dialog (if required)
 	if (openOverWrite) {
 		ImGui::OpenPopup(labels.confirmationWindow.c_str());
 		openOverWrite = false;
 	}
 
+	// render dialog (if required)
 	if (ImGui::BeginPopupModal(labels.confirmationWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		spacing();
 		ImGui::TextUnformatted(labels.fileExists.c_str());
@@ -608,6 +628,7 @@ void FileSelector::renderOverWritePopup() {
 //
 
 void FileSelector::renderNewFolderPopup() {
+	// open dialog (if required)
 	bool appearing = false;
 
 	if (openNewFolder) {
@@ -618,6 +639,7 @@ void FileSelector::renderNewFolderPopup() {
 		appearing = true;
 	}
 
+	// render dialog (if required)
 	if (ImGui::BeginPopupModal(labels.newFolder.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		ImGui::TextUnformatted(labels.nameOfNewFolder.c_str());
 
@@ -679,6 +701,7 @@ void FileSelector::renderNewFolderPopup() {
 //
 
 void FileSelector::renderRenamePopup() {
+	// open dialog (if required)
 	bool appearing = false;
 
 	if (openRename) {
@@ -689,6 +712,7 @@ void FileSelector::renderRenamePopup() {
 		appearing = true;
 	}
 
+	// render dialog (if required)
 	if (ImGui::BeginPopupModal(labels.rename.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		spacing();
 
@@ -748,12 +772,14 @@ void FileSelector::renderRenamePopup() {
 //
 
 void FileSelector::renderPermissionsPopup() {
+	// open dialog (if required)
 	if (openPermissions) {
 		ImGui::OpenPopup(labels.permissions.c_str());
 		permissionsError.clear();
 		openPermissions = false;
 	}
 
+	// render dialog (if required)
 	if (ImGui::BeginPopupModal(labels.permissions.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		spacing();
 
@@ -844,11 +870,13 @@ void FileSelector::renderPermissionsPopup() {
 //
 
 void FileSelector::renderErrorPopup() {
+	// open dialog (if required)
 	if (openError) {
 		ImGui::OpenPopup(labels.errorWindow.c_str());
 		openError = false;
 	}
 
+	// render dialog (if required)
 	if (ImGui::BeginPopupModal(labels.errorWindow.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
 		spacing();
 		ImGui::TextUnformatted(errorMessage.c_str());
@@ -927,6 +955,7 @@ void FileSelector::addDefaultMedia() {
 //
 
 void FileSelector::handleEntrySelection(Entry& entry) {
+	// handle clicking on an entry in a directory listing
 	if (entry.isDirectory) {
 		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 			nextPath = entry.path;
@@ -1007,6 +1036,7 @@ void FileSelector::handleEntrySelection(Entry& entry) {
 //
 
 bool FileSelector::isOkAvailable() {
+	// determine state of "OK" button in file selector
 	switch (mode) {
 		case Mode::openFile: return !selectedPath.empty(); break;
 		case Mode::saveAs: return saveAsString.size(); break;
@@ -1024,6 +1054,7 @@ bool FileSelector::isOkAvailable() {
 //
 
 void FileSelector::handleOk() {
+	// determine what to do with OK based on selector mode
 	switch (mode) {
 		case Mode::openFile:
 			action = Action::selectedOpenFile;
@@ -1064,6 +1095,7 @@ void FileSelector::handleOk() {
 //
 
 void FileSelector::spacing() {
+	// add a little bit of vertical spacing for a prettier layout
 	auto pos = ImGui::GetCursorScreenPos();
 	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + frameHeight * 0.4f));
 }
@@ -1074,8 +1106,9 @@ void FileSelector::spacing() {
 //
 
 ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& button2) {
+	// reposition current screen cursor to right align botton(s)
 	if (button2.empty()) {
-		// right align button
+		// right align a single button
 		auto pos = ImGui::GetCursorScreenPos();
 		auto availableSpace = ImGui::GetContentRegionAvail();
 		auto size = ImVec2(ImGui::CalcTextSize(button1.c_str()).x + glyphSize.x * 2.0f, 0.0f);
@@ -1083,7 +1116,7 @@ ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& b
 		return size;
 
 	} else {
-		// right align buttons
+		// right align two buttons
 		auto pos = ImGui::GetCursorScreenPos();
 		auto availableSpace = ImGui::GetContentRegionAvail();
 
@@ -1140,6 +1173,7 @@ bool FileSelector::grouping(const char* label, bool* expanded) {
 //
 
 bool FileSelector::inputString(const char* label, std::string* value) {
+	// text input field with data from std::string
 	ImGuiInputTextFlags flags =
 		ImGuiInputTextFlags_NoUndoRedo |
 		ImGuiInputTextFlags_CallbackResize;
@@ -1161,6 +1195,7 @@ bool FileSelector::inputString(const char* label, std::string* value) {
 //
 
 bool FileSelector::inputStringWithHint(const char* label, const char* hint, std::string* value) {
+	// text input field with hint with data from std::string
 	ImGuiInputTextFlags flags =
 		ImGuiInputTextFlags_NoUndoRedo |
 		ImGuiInputTextFlags_CallbackResize;
@@ -1182,6 +1217,7 @@ bool FileSelector::inputStringWithHint(const char* label, const char* hint, std:
 //
 
 bool FileSelector::inputPath(const char* label, std::string* value) {
+	// text input field with data from std::string while applying naming rules for path name parts
 	ImGuiInputTextFlags flags =
 		ImGuiInputTextFlags_NoUndoRedo |
 		ImGuiInputTextFlags_CallbackResize |
@@ -1215,6 +1251,7 @@ bool FileSelector::inputPath(const char* label, std::string* value) {
 //
 
 void FileSelector::permissionsButton(const std::string& label, std::filesystem::perms mask) {
+	// toggle entries (based on mask) for subset of permissions
 	if (ImGui::Button(label.c_str())) {
 		if ((newPermissions & mask) == mask) {
 			newPermissions &= ~mask;
@@ -1231,6 +1268,7 @@ void FileSelector::permissionsButton(const std::string& label, std::filesystem::
 //
 
 void FileSelector::permissionCheckBox(const std::string& label, std::filesystem::perms mask) {
+	// toggle a single permission based on mask
 	bool value = (newPermissions & mask) != std::filesystem::perms::none;
 
 	if (ImGui::Checkbox(label.c_str(), &value)) {
@@ -1313,6 +1351,7 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 //
 
 void FileSelector::Listing::setSort(SortColumn column, SortOrder order) {
+	// set new sort parameters and resort listing
 	sortColumn = column;
 	sortOrder = order;
 	sort();
@@ -1324,6 +1363,7 @@ void FileSelector::Listing::setSort(SortColumn column, SortOrder order) {
 //
 
 void FileSelector::Listing::setExtensionFilter(const std::string& filter) {
+	// set new filter based on file extensions (empty filter means no filtering)
 	extensions.clear();
 	std::stringstream ss(filter);
 	std::string extension;
@@ -1339,6 +1379,7 @@ void FileSelector::Listing::setExtensionFilter(const std::string& filter) {
 //
 
 void FileSelector::Listing::setUserFilter(const std::string& filter) {
+	// specify a new user filter (based on regular expression rules)
 	filterValid = true;
 
 	if (filter.size()) {
@@ -1366,6 +1407,7 @@ void FileSelector::Listing::setUserFilter(const std::string& filter) {
 //
 
 void FileSelector::Listing::forEach(std::function<void(Entry&)> callback) {
+	// iterate through all entries in listing by calling function for each
 	for (auto& entry : *this) {
 		if (filter(entry)) {
 			callback(entry);
@@ -1379,6 +1421,7 @@ void FileSelector::Listing::forEach(std::function<void(Entry&)> callback) {
 //
 
 void FileSelector::Listing::clearSelections() {
+	// clear all entry selections
 	for (auto& entry : *this) {
 		entry.isSelected = false;
 	}
@@ -1390,7 +1433,7 @@ void FileSelector::Listing::clearSelections() {
 //
 
 void FileSelector::Listing::sort() {
-	// sort current nodes
+	// sort current entries
 	std::sort(begin(), end(), [this](const Entry& left, const Entry& right) {
 		if (sortColumn == SortColumn::name) {
 			return (sortOrder == SortOrder::ascending)
@@ -1418,19 +1461,19 @@ void FileSelector::Listing::sort() {
 //
 
 bool FileSelector::Listing::filter(const Entry& entry) {
-	// filter by visibility
+	// filter entry by visibility
 	if (!showHidden && entry.isHidden) {
 		return false;
 	}
 
-	// filter by extension
+	// filter entry by extension
 	if (extensions.size()) {
 		if (std::find(extensions.begin(), extensions.end(), entry.extension) != extensions.end()) {
 			return false;
 		}
 	}
 
-	// filter by user request
+	// filter entry by user request
 	if (filterActive && !std::regex_search(entry.nameString, filterRegex)) {
 		return false;
 	}
@@ -1444,6 +1487,7 @@ bool FileSelector::Listing::filter(const Entry& entry) {
 //
 
 std::string FileSelector::Entry::readableSize(const Labels& labels) {
+	// turn size into user readable string
 	size_t i = 0;
 	double mantissa = static_cast<double>(size);
 
@@ -1476,6 +1520,7 @@ std::string FileSelector::Entry::readableSize(const Labels& labels) {
 //
 
 std::string FileSelector::Entry::readableDate(const Labels& labels) {
+	// turn date into user readable string
 	auto wallNow = std::chrono::system_clock::now();
 	auto fileNow = std::filesystem::file_time_type::clock::now();
 
@@ -1599,6 +1644,7 @@ extern "C" {
 //
 
 std::filesystem::path FileSelector::getHome() {
+	// determine user's home directory and return path
 #ifdef _WIN32
 	PWSTR wcharPath = nullptr;
 
@@ -1624,6 +1670,7 @@ std::filesystem::path FileSelector::getHome() {
 	}
 
 #else
+	// try environment first
 	auto home = std::getenv("HOME");
 
 	if (home) {
@@ -1648,6 +1695,7 @@ std::filesystem::path FileSelector::getHome() {
 //
 
 bool FileSelector::isHidden(const std::filesystem::path& path) {
+	// empty path are treated as hidden
 	if (path.empty()) {
 		return true;
 	}
@@ -1844,6 +1892,8 @@ void FileSelector::getKnownDirectoryInfo(KnownDirectory type, std::string& name,
 //
 
 void FileSelector::forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback) {
+	// iterate through known locations like mounted volumes and drives
+
 #if __APPLE__
 	std::filesystem::path volumes{"/Volumes"};
 
