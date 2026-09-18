@@ -161,6 +161,14 @@ public:
 		std::string newFolder;
 		std::string nameOfNewFolder;
 		std::string nameTaken;
+		std::string permissions;
+		std::string owner;
+		std::string group;
+		std::string others;
+		std::string read;
+		std::string write;
+		std::string exec;
+		std::string all;
 		std::string recentPlaces;
 		std::string confirmationWindow;
 		std::string errorWindow;
@@ -203,6 +211,14 @@ private:
 		"New Folder",
 		"Name of new folder:",
 		"This name is already taken.",
+		"Permissions",
+		"Owner",
+		"Group",
+		"Other",
+		"Read",
+		"Write",
+		"Exec",
+		"All",
 		"Recent Places",
 		"Confirmation...",
 		"Error...",
@@ -374,6 +390,13 @@ private:
 	std::string newMoveName;
 	std::string moveError;
 
+	// handle permissions popup properties
+	bool openPermissions = false;
+	std::filesystem::path permissionsPath;
+	std::filesystem::perms oldPermissions;
+	std::filesystem::perms newPermissions;
+	std::string permissionsError;
+
 	// error popup properties
 	bool openError = false;
 	std::string errorMessage;
@@ -400,6 +423,7 @@ private:
 	void renderOverWritePopup();
 	void renderNewFolderPopup();
 	void renderRenamePopup();
+	void renderPermissionsPopup();
 	void renderErrorPopup();
 
 	void addDefaultFavorites();
@@ -417,6 +441,8 @@ private:
 	static bool inputString(const char* label, std::string* value);
 	static bool inputStringWithHint(const char* label, const char* hint, std::string* value);
 	static bool inputPath(const char* label, std::string* value);
+	void permissionsButton(const std::string& label, std::filesystem::perms mask);
+	void permissionCheckBox(const std::string& label, std::filesystem::perms mask);
 
 	std::filesystem::path getDuplicatePathName(const std::filesystem::path& path);
 
@@ -439,5 +465,5 @@ private:
 	static bool isAccessible(const std::filesystem::path& path);
 	static void getKnownDirectoryInfo(KnownDirectory type, std::string& label, std::filesystem::path& path);
 	static void forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback);
-	static bool moveToTrashCan(const std::filesystem::path& path);
+	static bool moveToTrashCan(const std::filesystem::path& path, std::string& errorMessage);
 };

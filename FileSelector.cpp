@@ -460,11 +460,10 @@ void FileSelector::renderListView(ImVec2 size) {
 				}
 
 				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {
-					if (moveToTrashCan(entry.path)) {
+					if (moveToTrashCan(entry.path, errorMessage)) {
 						nextPath = state.currentPath;
 
 					} else {
-						errorMessage = "can't move to trash can.";
 						openError = true;
 					}
 
@@ -486,6 +485,13 @@ void FileSelector::renderListView(ImVec2 size) {
 					} else {
 						nextPath = state.currentPath;
 					}
+				}
+
+				if (ImGui::MenuItem(labels.permissions.c_str())) {
+					oldPermissions = std::filesystem::status(entry.path).permissions();
+					newPermissions = oldPermissions;
+					permissionsPath = entry.path;
+					openPermissions = true;
 				}
 
 				ImGui::EndPopup();
@@ -559,6 +565,7 @@ void FileSelector::renderPopups() {
 	renderOverWritePopup();
 	renderNewFolderPopup();
 	renderRenamePopup();
+	renderPermissionsPopup();
 	renderErrorPopup();
 }
 
@@ -728,6 +735,102 @@ void FileSelector::renderRenamePopup() {
 		}
 
 		if (emptyName || invalidName) {
+			ImGui::EndDisabled();
+		}
+
+		ImGui::EndPopup();
+	}
+}
+
+
+//
+//	FileSelector::renderPermissionsPopup
+//
+
+void FileSelector::renderPermissionsPopup() {
+	if (openPermissions) {
+		ImGui::OpenPopup(labels.permissions.c_str());
+		permissionsError.clear();
+		openPermissions = false;
+	}
+
+	if (ImGui::BeginPopupModal(labels.permissions.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+		spacing();
+
+		static constexpr std::filesystem::perms readAll =
+			std::filesystem::perms::owner_read |
+			std::filesystem::perms::group_read |
+			std::filesystem::perms::others_read;
+
+		static constexpr std::filesystem::perms writeAll =
+			std::filesystem::perms::owner_write |
+			std::filesystem::perms::group_write |
+			std::filesystem::perms::others_write;
+
+		static constexpr std::filesystem::perms execAll =
+			std::filesystem::perms::owner_exec |
+			std::filesystem::perms::group_exec |
+			std::filesystem::perms::others_exec;
+
+		if (ImGui::BeginTable("permissions", 4)) {
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn(); permissionsButton(labels.all, std::filesystem::perms::all);
+			ImGui::TableNextColumn(); permissionsButton(labels.read, readAll);
+			ImGui::TableNextColumn(); permissionsButton(labels.write, writeAll);
+			ImGui::TableNextColumn(); permissionsButton(labels.exec, execAll);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn(); permissionsButton(labels.owner, std::filesystem::perms::owner_all);
+			ImGui::TableNextColumn(); permissionCheckBox("###ownerRead", std::filesystem::perms::owner_read);
+			ImGui::TableNextColumn(); permissionCheckBox("###ownerWrite", std::filesystem::perms::owner_write);
+			ImGui::TableNextColumn(); permissionCheckBox("###ownerExec", std::filesystem::perms::owner_exec);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn(); permissionsButton(labels.group, std::filesystem::perms::group_all);
+			ImGui::TableNextColumn(); permissionCheckBox("###groupRead", std::filesystem::perms::group_read);
+			ImGui::TableNextColumn(); permissionCheckBox("###groupWrite", std::filesystem::perms::group_write);
+			ImGui::TableNextColumn(); permissionCheckBox("###groupExec", std::filesystem::perms::group_exec);
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn(); permissionsButton(labels.others, std::filesystem::perms::others_all);
+			ImGui::TableNextColumn(); permissionCheckBox("###othersRead", std::filesystem::perms::others_read);
+			ImGui::TableNextColumn(); permissionCheckBox("###othersWrite", std::filesystem::perms::others_write);
+			ImGui::TableNextColumn(); permissionCheckBox("###othersExec", std::filesystem::perms::others_exec);
+
+			ImGui::EndTable();
+		}
+
+		if (permissionsError.size()) {
+			ImGui::TextDisabled("%s", permissionsError.c_str());
+		}
+
+		spacing();
+		auto size = rightAlign(labels.cancel, labels.ok);
+
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::SameLine();
+
+		if (newPermissions == oldPermissions) {
+			ImGui::BeginDisabled();
+		}
+
+		if (ImGui::Button(labels.ok.c_str(), size) || ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteOverActive)) {
+			std::error_code ec;
+			std::filesystem::permissions(permissionsPath, newPermissions, ec);
+
+			if (ec) {
+				permissionsError = ec.message();
+
+			} else {
+				listing.reload();
+				ImGui::CloseCurrentPopup();
+			}
+		}
+
+		if (newPermissions == oldPermissions) {
 			ImGui::EndDisabled();
 		}
 
@@ -975,7 +1078,7 @@ ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& b
 		// right align button
 		auto pos = ImGui::GetCursorScreenPos();
 		auto availableSpace = ImGui::GetContentRegionAvail();
-		auto size = ImVec2(ImGui::CalcTextSize(button1.c_str()).x, 0.0f);
+		auto size = ImVec2(ImGui::CalcTextSize(button1.c_str()).x + glyphSize.x * 2.0f, 0.0f);
 		ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x, pos.y));
 		return size;
 
@@ -1104,6 +1207,40 @@ bool FileSelector::inputPath(const char* label, std::string* value) {
 
 		return 0;
 	}, value);
+}
+
+
+//
+//	FileSelector::permissionsButton
+//
+
+void FileSelector::permissionsButton(const std::string& label, std::filesystem::perms mask) {
+	if (ImGui::Button(label.c_str())) {
+		if ((newPermissions & mask) == mask) {
+			newPermissions &= ~mask;
+
+		} else {
+			newPermissions |= mask;
+		}
+	}
+}
+
+
+//
+//	FileSelector::permissionCheckBox
+//
+
+void FileSelector::permissionCheckBox(const std::string& label, std::filesystem::perms mask) {
+	bool value = (newPermissions & mask) != std::filesystem::perms::none;
+
+	if (ImGui::Checkbox(label.c_str(), &value)) {
+		if (value) {
+			newPermissions |= mask;
+
+		} else {
+			newPermissions &= ~mask;
+		}
+	}
 }
 
 
@@ -1778,29 +1915,44 @@ void FileSelector::forEachKnownLocation(std::function<void(const std::string& na
 //	FileSelector::moveToTrashCan
 //
 
-bool FileSelector::moveToTrashCan(const std::filesystem::path& path) {
+bool FileSelector::moveToTrashCan(const std::filesystem::path& path, std::string& errorMessage) {
 	// determine absolute path with .. and symbolic links resolved
 	auto canonicalPath = std::filesystem::canonical(path);
 
 #if __APPLE__
 	auto canonicalString = pathToString(canonicalPath);
-
 	void* pool = objc_autoreleasePoolPush();
 
-	Class NSStringClass = objc_getClass("NSString");
-	SEL stringWithUTF8StringSel = sel_registerName("stringWithUTF8String:");
-	id pathString = ((id(*)(Class, SEL, const char*)) objc_msgSend)(NSStringClass, stringWithUTF8StringSel, canonicalString.c_str());
+	id pathString = ((id(*)(Class, SEL, const char*)) objc_msgSend)(
+		objc_getClass("NSString"),
+		sel_registerName("stringWithUTF8String:"),
+		canonicalString.c_str());
 
-	Class NSFileManagerClass = objc_getClass("NSFileManager");
-	SEL defaultManagerSel = sel_registerName("defaultManager");
-	id fileManager = ((id(*)(Class, SEL)) objc_msgSend)(NSFileManagerClass, defaultManagerSel);
+	id fileManager = ((id(*)(Class, SEL)) objc_msgSend)(
+		objc_getClass("NSFileManager"),
+		sel_registerName("defaultManager"));
 
-	Class NSURLClass = objc_getClass("NSURL");
-	SEL fileURLWithPathSel = sel_registerName("fileURLWithPath:");
-	id nsurl = ((id(*)(Class, SEL, id)) objc_msgSend)(NSURLClass, fileURLWithPathSel, pathString);
+	id nsurl = ((id(*)(Class, SEL, id)) objc_msgSend)(
+		objc_getClass("NSURL"),
+		sel_registerName("fileURLWithPath:"),
+		pathString);
 
-	SEL trashItemAtURLSel = sel_registerName("trashItemAtURL:resultingItemURL:error:");
-	auto result = ((BOOL(*)(id, SEL, id, id, id)) objc_msgSend)(fileManager, trashItemAtURLSel, nsurl, nil, nil);
+	id error = nullptr;
+
+	auto result = ((BOOL(*)(id, SEL, id, id, id*)) objc_msgSend)(
+		fileManager,
+		sel_registerName("trashItemAtURL:resultingItemURL:error:"),
+		nsurl,
+		nullptr,
+		&error);
+
+	if (result) {
+		errorMessage.clear();
+
+	} else {
+		id description = ((id(*)(id, SEL)) objc_msgSend)(error, sel_registerName("localizedDescription"));
+		errorMessage = ((const char* (*)(id, SEL)) objc_msgSend)(description, sel_registerName("UTF8String"));
+	}
 
 	objc_autoreleasePoolPop(pool);
 	return result;
@@ -1816,11 +1968,52 @@ bool FileSelector::moveToTrashCan(const std::filesystem::path& path) {
 	fileOp.wFunc = FO_DELETE;
 	fileOp.pFrom = canonicalString.data();
 	fileOp.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT;
-	return SHFileOperationW(&fileOp) == 0;
+	auto errorCode = SHFileOperationW(&fileOp);
+
+	if (errorCode == 0) {
+		errorMessage.clear();
+		return true;
+
+	} else {
+		LPTSTR messageBuffer = nullptr;
+
+		size_t size = FormatMessage(
+			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			nullptr,
+			errorCode,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			(LPTSTR) &messageBuffer,
+			0,
+			nullptr);
+
+		if (size > 0 && messageBuffer != nullptr) {
+			errorMessage = messageBuffer;
+
+			while (!errorMessage.empty() && (errorMessage.back() == '\r' || errorMessage.back() == '\n')) {
+				errorMessage.pop_back();
+			}
+
+			LocalFree(messageBuffer);
+
+		} else {
+			errorMessage = "Unknown error";
+		}
+
+		return false;
+	}
 
 #else
 	// use desktop command to move files to trash
 	std::string command = "gio trash '" + pathToString(canonicalPath) + "'";
-	return std::system(command.c_str()) == 0;
+	auto result = std::system(command.c_str()) == 0;
+
+	if (result) {
+		errorMessage.clear();
+
+	} else {
+		errorMessage = "System error";
+	}
+
+	return result;
 #endif
 }
