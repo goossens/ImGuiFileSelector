@@ -116,13 +116,13 @@ bool FileSelector::Render() {
 
 	// render the selector popup
 	auto viewPort = ImGui::GetMainViewport();
-	ImVec2 center = viewPort->GetCenter();
-	ImVec2 maxSize = viewPort->Size;
-	ImVec2 minSize = maxSize * 0.6f;
+	const ImVec2 center = viewPort->GetCenter();
+	const ImVec2 maxSize = viewPort->Size;
+	const ImVec2 minSize = maxSize * 0.6f;
 	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 	ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
 
-	ImGuiWindowFlags windowFlags =
+	const ImGuiWindowFlags windowFlags =
 		ImGuiWindowFlags_NoTitleBar |
 		ImGuiWindowFlags_NoMove |
 		ImGuiWindowFlags_NoCollapse |
@@ -172,7 +172,7 @@ bool FileSelector::Render() {
 bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHistory) {
 	// convert path to an absolute, unique path with no relative elements (. or ..) or symbolic links
 	std::error_code ec;
-	auto canonicalPath = std::filesystem::canonical(path, ec);
+	const auto canonicalPath = std::filesystem::canonical(path, ec);
 
 	// sanity checks
 	if (ec) {
@@ -241,9 +241,9 @@ void FileSelector::renderFileDialog() {
 
 	// generate sidebar (if configured)
 	if (state.showSideBar) {
-		auto availableSpace = ImGui::GetContentRegionAvail();
+		const auto availableSpace = ImGui::GetContentRegionAvail();
 
-		ImGuiChildFlags flags =
+		const ImGuiChildFlags flags =
 			ImGuiChildFlags_Borders |
 			ImGuiChildFlags_ResizeX;
 
@@ -258,8 +258,8 @@ void FileSelector::renderFileDialog() {
 	// render main area
 	if (ImGui::BeginChild("mainArea", ImGui::GetContentRegionAvail())) {
 		renderHeader();
-		auto availableSpace = ImGui::GetContentRegionAvail();
-		auto actionButtonHeight = frameHeight * 1.5f + itemSpacing.y * 2.0f;
+		const auto availableSpace = ImGui::GetContentRegionAvail();
+		const auto actionButtonHeight = frameHeight * 1.5f + itemSpacing.y * 2.0f;
 		renderListView(ImVec2(availableSpace.x, availableSpace.y - actionButtonHeight));
 		renderActionButtons();
 	}
@@ -288,7 +288,7 @@ void FileSelector::renderSideBar() {
 void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& group) {
 	// skip empty groups
 	if (group.entries.size()) {
-		// render group label and expension toggle
+		// render group label and expansion toggle
 		grouping(label.c_str(), &(group.expanded));
 
 		// ensure group content is visible
@@ -344,7 +344,7 @@ void FileSelector::renderHeader() {
 	}
 
 	// render history navigation buttons
-	auto pos = ImGui::GetCursorScreenPos();
+	const auto pos = ImGui::GetCursorScreenPos();
 	auto disabled = historyIndex <= 1;
 	if (disabled) { ImGui::BeginDisabled(); }
 
@@ -367,8 +367,8 @@ void FileSelector::renderHeader() {
 
 	// render path selector and recent places
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.25f, pos.y));
-	float itemHeight = ImGui::GetTextLineHeightWithSpacing();
-	float popupHeight = itemHeight * 12 + ImGui::GetStyle().FramePadding.y * 4.0f;
+	const float itemHeight = ImGui::GetTextLineHeightWithSpacing();
+	const float popupHeight = itemHeight * 12 + ImGui::GetStyle().FramePadding.y * 4.0f;
 	ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, popupHeight));
 	ImGui::SetNextItemWidth(width * 0.4f);
 
@@ -431,7 +431,7 @@ void FileSelector::renderHeader() {
 
 void FileSelector::renderListView(ImVec2 size) {
 	// build table of current directory entries
-	ImGuiTableFlags tableFlags =
+	const ImGuiTableFlags tableFlags =
 		ImGuiTableFlags_ScrollY |
 		ImGuiTableFlags_RowBg |
 		ImGuiTableFlags_BordersOuterH |
@@ -558,7 +558,7 @@ void FileSelector::renderActionButtons() {
 
 	// handle OK button (disable when nothing is selected)
 	ImGui::SameLine();
-	auto okAvailable = isOkAvailable();
+	const auto okAvailable = isOkAvailable();
 
 	if (!okAvailable) {
 		ImGui::BeginDisabled();
@@ -898,7 +898,7 @@ void FileSelector::renderErrorPopup() {
 //
 
 void FileSelector::addDefaultFavorites() {
-	auto home = getHome();
+	const auto home = getHome();
 
 	if (!home.empty()) {
 		// these only get added when they exist
@@ -915,7 +915,7 @@ void FileSelector::addDefaultFavorites() {
 //
 
 void FileSelector::addDefaultClouds() {
-	auto home = getHome();
+	const auto home = getHome();
 
 	if (!home.empty()) {
 		clouds.add("iCloud Drive", home / "Library" / "Mobile Documents" / "com~apple~CloudDocs");
@@ -940,7 +940,7 @@ void FileSelector::addDefaultLocations() {
 //
 
 void FileSelector::addDefaultMedia() {
-	auto home = getHome();
+	const auto home = getHome();
 
 	if (!home.empty()) {
 		media.add(KnownDirectory::movies);
@@ -1096,7 +1096,7 @@ void FileSelector::handleOk() {
 
 void FileSelector::spacing() {
 	// add a little bit of vertical spacing for a prettier layout
-	auto pos = ImGui::GetCursorScreenPos();
+	const auto pos = ImGui::GetCursorScreenPos();
 	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + frameHeight * 0.4f));
 }
 
@@ -1109,18 +1109,18 @@ ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& b
 	// reposition current screen cursor to right align botton(s)
 	if (button2.empty()) {
 		// right align a single button
-		auto pos = ImGui::GetCursorScreenPos();
-		auto availableSpace = ImGui::GetContentRegionAvail();
-		auto size = ImVec2(ImGui::CalcTextSize(button1.c_str()).x + glyphSize.x * 2.0f, 0.0f);
+		const auto pos = ImGui::GetCursorScreenPos();
+		const auto availableSpace = ImGui::GetContentRegionAvail();
+		const auto size = ImVec2(ImGui::CalcTextSize(button1.c_str()).x + glyphSize.x * 2.0f, 0.0f);
 		ImGui::SetCursorScreenPos(ImVec2(pos.x + availableSpace.x - size.x, pos.y));
 		return size;
 
 	} else {
 		// right align two buttons
-		auto pos = ImGui::GetCursorScreenPos();
-		auto availableSpace = ImGui::GetContentRegionAvail();
+		const auto pos = ImGui::GetCursorScreenPos();
+		const auto availableSpace = ImGui::GetContentRegionAvail();
 
-		auto size = ImVec2(
+		const auto size = ImVec2(
 			std::max(
 				ImGui::CalcTextSize(button1.c_str()).x,
 				ImGui::CalcTextSize(button2.c_str()).x) + glyphSize.x * 2.0f,
@@ -1138,12 +1138,12 @@ ImVec2 FileSelector::rightAlign(const std::string& button1, const std::string& b
 
 bool FileSelector::grouping(const char* label, bool* expanded) {
 	// determine position and space
-	auto pos = ImGui::GetCursorScreenPos();
+	const auto pos = ImGui::GetCursorScreenPos();
 	auto size = ImGui::GetContentRegionAvail();
 	size.y = glyphSize.y;
 
 	// run button action
-	bool changed = ImGui::InvisibleButton(label, size);
+	const bool changed = ImGui::InvisibleButton(label, size);
 
 	if (changed) {
 		*expanded = !*expanded;
@@ -1151,11 +1151,11 @@ bool FileSelector::grouping(const char* label, bool* expanded) {
 
 	// render label and state
 	auto drawList = ImGui::GetWindowDrawList();
-	auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+	const auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
 	drawList->AddText(pos, color, label);
 
 	if (ImGui::IsItemHovered()) {
-		auto right = pos + ImVec2(size.x - glyphSize.x, 0.0f);
+		const auto right = pos + ImVec2(size.x - glyphSize.x, 0.0f);
 		ImVec2 p1 = ImVec2(right + ImVec2(0.0f, glyphSize.y * 0.3f));
 		ImVec2 p2 = right + (*expanded ? ImVec2(glyphSize.x * 0.5f, glyphSize.y * 0.7f) : ImVec2(glyphSize.x, glyphSize.y * 0.5f));
 		ImVec2 p3 = right + (*expanded ? ImVec2(glyphSize.x, glyphSize.y * 0.3f) : ImVec2(0.0f, glyphSize.y * 0.7f));
@@ -1292,7 +1292,7 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 	bool success = true;
 
 	// get system locale
-	std::locale locale("");
+	const std::locale locale("");
 
 	// get the facets for wide characters (wstring)
 	auto& ctypeFacet = std::use_facet<std::ctype<wchar_t>>(locale);
@@ -1549,8 +1549,8 @@ std::string FileSelector::Entry::readableDate(const Labels& labels) {
 
 std::filesystem::path FileSelector::getDuplicatePathName(const std::filesystem::path& path) {
 	// get path parts
-	auto parent = path.parent_path();
-	auto extension = path.extension().string();
+	const auto parent = path.parent_path();
+	const auto extension = path.extension().string();
 	auto stem = path.stem().string();
 
 	// adjust stem if it's already a copy
@@ -1739,7 +1739,7 @@ bool FileSelector::isAccessible(const std::filesystem::path& path) {
 	}
 
 	// try iterating through the directory to confirm read access
-	std::filesystem::directory_iterator it(path, ec);
+	const std::filesystem::directory_iterator it(path, ec);
 
 	if (ec) {
 		return false;
@@ -1775,8 +1775,8 @@ void FileSelector::getKnownDirectoryInfo(KnownDirectory type, std::string& name,
 	CFStringRef localizedNameRef = nullptr;
 
 	if (CFURLCopyResourcePropertyForKey(cfURL, kCFURLLocalizedNameKey, &localizedNameRef, nullptr)) {
-		CFIndex length = CFStringGetLength(localizedNameRef);
-		CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+		const CFIndex length = CFStringGetLength(localizedNameRef);
+		const CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
 
 		std::vector<char> buffer(maxSize);
 		CFStringGetCString(localizedNameRef, buffer.data(), maxSize, kCFStringEncodingUTF8);
@@ -1989,7 +1989,7 @@ bool FileSelector::moveToTrashCan(const std::filesystem::path& path, std::string
 
 	id error = nullptr;
 
-	auto result = ((BOOL(*)(id, SEL, id, id, id*)) objc_msgSend)(
+	const auto result = ((BOOL(*)(id, SEL, id, id, id*)) objc_msgSend)(
 		fileManager,
 		sel_registerName("trashItemAtURL:resultingItemURL:error:"),
 		nsurl,

@@ -22,7 +22,7 @@
 
 void Selector::render() {
 	// start window
-	ImGuiWindowFlags windowFlags =
+	const ImGuiWindowFlags windowFlags =
 		ImGuiWindowFlags_NoDecoration |
 		ImGuiWindowFlags_NoBringToFrontOnFocus;
 
