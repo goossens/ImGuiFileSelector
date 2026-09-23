@@ -451,18 +451,16 @@ private:
 
 	std::filesystem::path getDuplicatePathName(const std::filesystem::path& path);
 
+	static inline std::string pathToString(const std::filesystem::path& path) {
 #if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
-	static inline std::string pathToString(const std::filesystem::path& path) {
-		auto u8Str = path.generic_u8string();
-		std::string str(u8Str.begin(), u8Str.end());
-		return str;
-	}
+	auto u8Str = path.generic_u8string();
+	std::string str(u8Str.begin(), u8Str.end());
+	return str;
 
-	#else
-	static inline std::string pathToString(const std::filesystem::path& path) {
+#else
 		return path.u8string();
-	}
 #endif
+	}
 
 	// OS-specific local functions
 	static std::filesystem::path getHome();
