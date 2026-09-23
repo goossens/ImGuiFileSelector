@@ -43,8 +43,8 @@ FileSelector::FileSelector() : listing(labels) {
 //	FileSelector::OpenFile
 //
 
-bool FileSelector::OpenFile(const std::string& filter) {
-	return openDialog(Mode::openFile, filter);
+bool FileSelector::OpenFile(const std::string& extensionFilter) {
+	return openDialog(Mode::openFile, extensionFilter);
 }
 
 
@@ -61,8 +61,8 @@ bool FileSelector::SaveAs() {
 //	FileSelector::SelectFiles
 //
 
-bool FileSelector::SelectFiles(const std::string& filter) {
-	return openDialog(Mode::selectFiles, filter);
+bool FileSelector::SelectFiles(const std::string& extensionFilter) {
+	return openDialog(Mode::selectFiles, extensionFilter);
 }
 
 
@@ -70,8 +70,8 @@ bool FileSelector::SelectFiles(const std::string& filter) {
 //	FileSelector::SelectDirectory
 //
 
-bool FileSelector::SelectDirectory(const std::string& filter) {
-	return openDialog(Mode::selectDirectory, filter);
+bool FileSelector::SelectDirectory() {
+	return openDialog(Mode::selectDirectory);
 }
 
 
@@ -79,7 +79,7 @@ bool FileSelector::SelectDirectory(const std::string& filter) {
 //	FileSelector::openDialog
 //
 
-bool FileSelector::openDialog(Mode openMode, const std::string& filter) {
+bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter) {
 	// don't open multiple instances
 	if (mode == Mode::idle) {
 		mode = openMode;
@@ -88,7 +88,7 @@ bool FileSelector::openDialog(Mode openMode, const std::string& filter) {
 		selectedPaths.clear();
 		listing.reload();
 		listing.setUserFilter("");
-		listing.setExtensionFilter(filter);
+		listing.setExtensionFilter(extensionFilter);
 		requestOpen = true;
 		return true;
 
@@ -1473,8 +1473,8 @@ bool FileSelector::Listing::filter(const Entry& entry) {
 	}
 
 	// filter entry by extension
-	if (extensions.size()) {
-		if (std::find(extensions.begin(), extensions.end(), entry.extension) != extensions.end()) {
+	if (!entry.isDirectory && extensions.size()) {
+		if (std::find(extensions.begin(), extensions.end(), entry.extension) == extensions.end()) {
 			return false;
 		}
 	}

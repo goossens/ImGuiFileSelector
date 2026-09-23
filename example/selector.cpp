@@ -17,6 +17,28 @@
 
 
 //
+//	inputString
+//
+
+static bool inputString(const char* label, std::string* value) {
+	// text input field with data from std::string
+	ImGuiInputTextFlags flags =
+		ImGuiInputTextFlags_NoUndoRedo |
+		ImGuiInputTextFlags_CallbackResize;
+
+	return ImGui::InputText(label, value->data(), value->capacity() + 1, flags, [](ImGuiInputTextCallbackData* data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			std::string* value = static_cast<std::string*>(data->UserData);
+			value->resize(data->BufTextLen);
+			data->Buf = (char*) value->c_str();
+		}
+
+		return 0;
+	}, value);
+}
+
+
+//
 //	Selector::render
 //
 
@@ -64,9 +86,11 @@ void Selector::render() {
 		selector.SetShowHidden(showHidden);
 	}
 
+	inputString("Extension filter", &extensionFilter);
+
 	// trigger file selectors through a button or shortcut
 	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O)) {
-		selector.OpenFile();
+		selector.OpenFile(extensionFilter);
 		logger.Add("Opened file selector");
 	}
 
@@ -80,7 +104,7 @@ void Selector::render() {
 	ImGui::SameLine();
 
 	if (ImGui::Button("Select Files")) {
-		selector.SelectFiles();
+		selector.SelectFiles(extensionFilter);
 		logger.Add("Opened select files");
 	}
 

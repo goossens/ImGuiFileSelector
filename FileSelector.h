@@ -68,7 +68,7 @@ public:
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
 	// select path can be accessed through GetSelectedPath
-	bool OpenFile(const std::string& filter="");
+	bool OpenFile(const std::string& extensionFilter="");
 
 	// start a selector to pick a path to save content to
 	// returns true if selector is opened and false if a previous selector is still active
@@ -78,12 +78,12 @@ public:
 	// start a selector to select one or more files
 	// returns true if selector is opened and false if a previous selector is still active
 	// select paths can be accessed through GetSelectedPaths
-	bool SelectFiles(const std::string& filter="");
+	bool SelectFiles(const std::string& extensionFilter="");
 
 	// start a selector to select a directory
 	// returns true if selector is opened and false if a previous selector is still active
 	// select path can be accessed through GetSelectedPath
-	bool SelectDirectory(const std::string& filter="");
+	bool SelectDirectory();
 
 	// forcefully close the current selector
 	// this doesn't do anything if no selector is open

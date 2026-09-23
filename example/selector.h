@@ -33,4 +33,5 @@ private:
 	bool showSideBar = true;
 	bool showHidden = false;
 	bool showDebugWindow = false;
+	std::string extensionFilter;
 };
