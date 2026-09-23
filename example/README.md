@@ -3,7 +3,7 @@
 This directory contains a full example on how to use the ImGuiFileSelector widget.
 It implements a test program to try out various configuration settings and modes.
 
-![Screenshot](screenshot.png)
+![Screenshot](../docs/screenshot.png)
 
 It uses the SDL3 GPU rendering backend and comes with CMake support so
 you should be able to run it on MacOS, Linux and Windows. Here are

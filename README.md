@@ -16,6 +16,8 @@
 
 Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGui look and feel.
 
+![Screenshot](docs/screenshot.png)
+
 ## Features
 
 - Works on MacOS, Linux and Windows.
@@ -30,7 +32,8 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 - API calls are available to see what user selected, see [example](example/selector.cpp) and [documentation](docs/overview.md).
 - Provides optional sidebar for quick navigation to favorites, cloud, locations and/or media.
 - Sidebar groups are collapsible and are are hidden when empty.
-- Default sidebar is MacOS like but can be completely [customized/adjusted](docs/sidebar.md).
+- Sidebar size can be adjusted by dragging right side.
+- Default sidebar is MacOS-like but can be completely [customized/adjusted](docs/sidebar.md).
 - Provides directory history navigation (backwards, forwards) as if they are hyperlinks in a browser.
 - Directory filtering:
 	- Show/hide hidden files/directories.
@@ -48,3 +51,30 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 - State is automatically preserved between selector popups while application is running.
 - API calls are available to [preserve state](docs/state.md) between application runs.
 
+## Versioning
+
+This repository includes releases with a numbering scheme synchronized with Dear ImGui.
+This will allow people to quickly find a version of the widgets compatible with a specific Dear ImGui version.
+
+## Issues
+
+If you are interested in using this File Selector, steal parts of the code,
+make suggestions for improvements or contribute fixes/enhancements, be my guest as this
+repository is released under the MIT license. For people that want to contribute,
+[Contributing Guidelines](CONTRIBUTING) and a [Code of Conduct](CODE_OF_CONDUCT.md)
+are available. If you find any problems or want to make a suggestion for improvement, please
+[raise an issue on this repository](https://github.com/goossens/ImGuiFileSelector/issues).
+
+## Credits
+
+ImGuiFileSelector was written from scratch by [Johan A. Goossens](https://github.com/goossens)
+and if you end up using (parts of) this repository, a shoutout or Github star would be appreciated.
+Other notification systems exist on Git but many of them have not been maintained for a bit.
+
+A big thank you to [Omar Cornut](https://github.com/ocornut/imgui) for creating Dear ImGui
+in the first place. Without you, this notification system would not exist.
+
+## License
+
+This work is licensed under the terms of the MIT license.
+For a copy, see <https://opensource.org/licenses/MIT>.
