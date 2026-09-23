@@ -134,6 +134,12 @@ bool FileSelector::Render() {
 		renderFileDialog();
 		renderPopups();
 
+		if (ImGui::Shortcut(ImGuiKey_Escape)) {
+			selectedPath.clear();
+			selectedPaths.clear();
+			action = Action::cancelled;
+		}
+
 		// see if user made selection
 		if (action != Action::none && action != Action::cancelled) {
 			// remove recent places entry to avoid duplication (if required)
@@ -550,7 +556,7 @@ void FileSelector::renderActionButtons() {
 	auto size = rightAlign(labels.cancel, okLabel);
 
 	// handle cancel button and shortcut
-	if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
+	if (ImGui::Button(labels.cancel.c_str(), size)) {
 		selectedPath.clear();
 		selectedPaths.clear();
 		action = Action::cancelled;
@@ -664,7 +670,7 @@ void FileSelector::renderNewFolderPopup() {
 		spacing();
 		auto size = rightAlign(labels.cancel, labels.create);
 
-		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 			ImGui::CloseCurrentPopup();
 		}
 
@@ -735,7 +741,7 @@ void FileSelector::renderRenamePopup() {
 		spacing();
 		auto size = rightAlign(labels.cancel, labels.rename);
 
-		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 			ImGui::CloseCurrentPopup();
 		}
 
@@ -833,7 +839,7 @@ void FileSelector::renderPermissionsPopup() {
 		spacing();
 		auto size = rightAlign(labels.cancel, labels.ok);
 
-		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape, ImGuiInputFlags_RouteOverActive)) {
+		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 			ImGui::CloseCurrentPopup();
 		}
 
