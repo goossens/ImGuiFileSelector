@@ -52,7 +52,23 @@ bool FileSelector::OpenFile(const std::string& extensionFilter) {
 //	FileSelector::SaveAs
 //
 
-bool FileSelector::SaveAs() {
+bool FileSelector::SaveAs(const std::filesystem::path& defaultPath) {
+	if (mode == Mode::idle) {
+		if (!defaultPath.empty()) {
+			if (std::filesystem::is_directory(defaultPath)) {
+				nextPath = defaultPath;
+				saveAsString.clear();
+
+			} else {
+				nextPath = defaultPath.parent_path();
+				saveAsString = pathToString(defaultPath.filename());
+			}
+
+		} else {
+			saveAsString.clear();
+		}
+	}
+
 	return openDialog(Mode::saveAs);
 }
 
@@ -83,7 +99,6 @@ bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter)
 	// don't open multiple instances
 	if (mode == Mode::idle) {
 		mode = openMode;
-		saveAsString.clear();
 		selectedPath.clear();
 		selectedPaths.clear();
 		listing.reload();

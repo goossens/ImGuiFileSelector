@@ -86,6 +86,7 @@ void Selector::render() {
 		selector.SetShowHidden(showHidden);
 	}
 
+	ImGui::SetNextItemWidth(ImGui::CalcTextSize("#").x * 30.0f);
 	inputString("Extension filter", &extensionFilter);
 
 	// trigger file selectors through a button or shortcut
