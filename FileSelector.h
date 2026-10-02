@@ -70,23 +70,23 @@ public:
 
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
-	// select path can be accessed through GetSelectedPath
-	bool OpenFile(const std::string& extensionFilter={});
+	// accessoryView is a callback function to render custom items above the action buttons
+	bool OpenFile(const std::string& extensionFilter={}, std::function<void()> accessoryView={}, float avHeight=0.0f);
 
 	// start a selector to pick a path to save content to
 	// returns true if selector is opened and false if a previous selector is still active
-	// select path can be accessed through GetSelectedPath
-	bool SaveAs(const std::filesystem::path& defaultPath={});
+	// accessoryView is a callback function to render custom items above the action buttons
+	bool SaveAs(const std::filesystem::path& defaultPath={}, std::function<void()> accessoryView={}, float avHeight=0.0f);
 
 	// start a selector to select one or more files
 	// returns true if selector is opened and false if a previous selector is still active
-	// select paths can be accessed through GetSelectedPaths
-	bool SelectFiles(const std::string& extensionFilter={});
+	// accessoryView is a callback function to render custom items above the action buttons
+	bool SelectFiles(const std::string& extensionFilter={}, std::function<void()> accessoryView={}, float avHeight=0.0f);
 
 	// start a selector to select a directory
 	// returns true if selector is opened and false if a previous selector is still active
-	// select path can be accessed through GetSelectedPath
-	bool SelectDirectory();
+	// accessoryView is a callback function to render custom items above the action buttons
+	bool SelectDirectory(std::function<void()> accessoryView={}, float avHeight=0.0f);
 
 	// forcefully close the current selector
 	// this doesn't do anything if no selector is open
@@ -114,7 +114,8 @@ public:
 
 	// render the file selector widget
 	// it is safe to call this every frame as it's a NOOP if no selectors are active
-	// returns true if user made selection or false if not
+	// returns true if user made selection(s) or cancelled (use selection status above)
+	// selected path(s) can be accessed through GetSelectedPath
 	bool Render();
 
 	// manage sidebar content
@@ -272,6 +273,8 @@ private:
 	std::filesystem::path selectedPath;
 	std::vector<std::filesystem::path> selectedPaths;
 	bool requestOpen = false;
+	std::function<void()> accessoryView;
+	float accessoryViewHeight=0.0f;
 
 	// directory traversal history
 	std::vector<std::filesystem::path> pathHistory;
@@ -419,12 +422,13 @@ private:
 	float frameHeight;
 	ImVec2 glyphSize;
 	ImVec2 itemSpacing;
+	float extraSpacing;
 	std::string saveAsString;
 	std::string filterString;
 	std::filesystem::path nextPath;
 
 	// local functions
-	bool openDialog(Mode mode, const std::string& filter="");
+	bool openDialog(Mode mode, const std::string& filter, std::function<void()> accessoryView, float avHeight);
 	bool setCurrentPath(const std::filesystem::path path, bool addHistory=true);
 
 	void renderFileDialog();

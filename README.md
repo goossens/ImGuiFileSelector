@@ -48,6 +48,7 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 	- Move file or folder to trash.
 	- Duplicate a file or folder.
 	- Change file/folder permissions.
+- Provides optional accessory views (e.g. custom format selector for Save As).
 - State is automatically preserved between selector popups while application is running.
 - API calls are available to [preserve state](docs/state.md) between application runs.
 

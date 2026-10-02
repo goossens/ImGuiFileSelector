@@ -43,8 +43,8 @@ FileSelector::FileSelector() : listing(labels) {
 //	FileSelector::OpenFile
 //
 
-bool FileSelector::OpenFile(const std::string& extensionFilter) {
-	return openDialog(Mode::openFile, extensionFilter);
+bool FileSelector::OpenFile(const std::string& extensionFilter, std::function<void()> av, float avHeight) {
+	return openDialog(Mode::openFile, extensionFilter, av, avHeight);
 }
 
 
@@ -52,7 +52,7 @@ bool FileSelector::OpenFile(const std::string& extensionFilter) {
 //	FileSelector::SaveAs
 //
 
-bool FileSelector::SaveAs(const std::filesystem::path& defaultPath) {
+bool FileSelector::SaveAs(const std::filesystem::path& defaultPath, std::function<void()> av, float avHeight) {
 	if (mode == Mode::idle) {
 		if (!defaultPath.empty()) {
 			if (std::filesystem::is_directory(defaultPath)) {
@@ -69,7 +69,7 @@ bool FileSelector::SaveAs(const std::filesystem::path& defaultPath) {
 		}
 	}
 
-	return openDialog(Mode::saveAs);
+	return openDialog(Mode::saveAs, "", av, avHeight);
 }
 
 
@@ -77,8 +77,8 @@ bool FileSelector::SaveAs(const std::filesystem::path& defaultPath) {
 //	FileSelector::SelectFiles
 //
 
-bool FileSelector::SelectFiles(const std::string& extensionFilter) {
-	return openDialog(Mode::selectFiles, extensionFilter);
+bool FileSelector::SelectFiles(const std::string& extensionFilter, std::function<void()> av, float avHeight) {
+	return openDialog(Mode::selectFiles, extensionFilter, av, avHeight);
 }
 
 
@@ -86,8 +86,8 @@ bool FileSelector::SelectFiles(const std::string& extensionFilter) {
 //	FileSelector::SelectDirectory
 //
 
-bool FileSelector::SelectDirectory() {
-	return openDialog(Mode::selectDirectory);
+bool FileSelector::SelectDirectory(std::function<void()> av, float avHeight) {
+	return openDialog(Mode::selectDirectory, "", av, avHeight);
 }
 
 
@@ -95,10 +95,12 @@ bool FileSelector::SelectDirectory() {
 //	FileSelector::openDialog
 //
 
-bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter) {
+bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter, std::function<void()> av, float avHeight) {
 	// don't open multiple instances
 	if (mode == Mode::idle) {
 		mode = openMode;
+		accessoryView = av;
+		accessoryViewHeight = avHeight;
 		selectedPath.clear();
 		selectedPaths.clear();
 		listing.reload();
@@ -259,6 +261,7 @@ void FileSelector::renderFileDialog() {
 	frameHeight = ImGui::GetFrameHeight();
 	glyphSize = ImGui::CalcTextSize("#");
 	itemSpacing = ImGui::GetStyle().ItemSpacing;
+	extraSpacing = frameHeight * 0.4f;
 
 	// generate sidebar (if configured)
 	if (state.showSideBar) {
@@ -280,8 +283,17 @@ void FileSelector::renderFileDialog() {
 	if (ImGui::BeginChild("mainArea", ImGui::GetContentRegionAvail())) {
 		renderHeader();
 		const auto availableSpace = ImGui::GetContentRegionAvail();
+		const auto accessorHeight = accessoryView ? 1.0f + accessoryViewHeight + extraSpacing * 2.0f + itemSpacing.y * 2.0f : 0.0f;
 		const auto actionButtonHeight = frameHeight * 1.5f + itemSpacing.y * 2.0f;
-		renderListView(ImVec2(availableSpace.x, availableSpace.y - actionButtonHeight));
+		renderListView(ImVec2(availableSpace.x, availableSpace.y - actionButtonHeight - accessorHeight));
+
+		if (accessoryView) {
+			spacing();
+			accessoryView();
+			spacing();
+			ImGui::Separator();
+		}
+
 		renderActionButtons();
 	}
 
@@ -1123,7 +1135,7 @@ void FileSelector::handleOk() {
 void FileSelector::spacing() {
 	// add a little bit of vertical spacing for a prettier layout
 	const auto pos = ImGui::GetCursorScreenPos();
-	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + frameHeight * 0.4f));
+	ImGui::SetCursorScreenPos(ImVec2(pos.x, pos.y + extraSpacing));
 }
 
 

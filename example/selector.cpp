@@ -98,7 +98,39 @@ void Selector::render() {
 	ImGui::SameLine();
 
 	if (ImGui::Button("Save As") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S)) {
-		selector.SaveAs();
+		static constexpr const char* formats[] = { "PNG", "JPEG", "TIFF", "GIF" };
+		static constexpr size_t formatCount = sizeof(formats) / sizeof(formats[0]);
+		static size_t selectedFormat = 0;
+
+		selector.SaveAs({}, []() {
+			auto pos = ImGui::GetCursorScreenPos();
+			auto glyphWidth = ImGui::CalcTextSize("#").y;
+			auto selectorWidth = glyphWidth * 5.0f;
+			auto totalWidth = (7.0f * glyphWidth) + ImGui::GetStyle().ItemSpacing.x + selectorWidth;
+			ImGui::SetCursorScreenPos(ImVec2(pos.x + (ImGui::GetContentRegionAvail().x - totalWidth) * 0.5f, pos.y));
+			ImGui::AlignTextToFramePadding();
+			ImGui::TextUnformatted("Format:");
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(selectorWidth);
+
+			if (ImGui::BeginCombo("###format", formats[selectedFormat])) {
+				for (size_t i = 0; i < formatCount; i++) {
+					const auto isSelected = (selectedFormat == i);
+
+					if (ImGui::Selectable(formats[i], isSelected)) {
+						selectedFormat = i;
+					}
+
+					if (isSelected) {
+						ImGui::SetItemDefaultFocus();
+					}
+				}
+
+				ImGui::EndCombo();
+			}
+
+		}, ImGui::GetFrameHeight());
+
 		logger.Add("Opened save as");
 	}
 
