@@ -133,7 +133,7 @@ bool FileSelector::Render() {
 	auto viewPort = ImGui::GetMainViewport();
 	const ImVec2 center = viewPort->GetCenter();
 	const ImVec2 maxSize = viewPort->Size;
-	const ImVec2 minSize = maxSize * 0.6f;
+	const ImVec2 minSize = maxSize * 0.7f;
 	ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 	ImGui::SetNextWindowSizeConstraints(minSize, maxSize);
 
@@ -458,8 +458,9 @@ void FileSelector::renderListView(ImVec2 size) {
 		ImGuiTableFlags_BordersOuterH |
 		ImGuiTableFlags_Sortable;
 
-	if (ImGui::BeginTable("listView", 3, tableFlags, size)) {
+	if (ImGui::BeginTable("listView", 4, tableFlags, size)) {
 		ImGui::TableSetupColumn(labels.nameColumn.c_str(), ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn(labels.typeColumn.c_str(), ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize);
 		ImGui::TableSetupColumn(labels.dateColumn.c_str(), ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize);
 		ImGui::TableSetupColumn(labels.sizeColumn.c_str(), ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoResize);
 		ImGui::TableSetupScrollFreeze(0, 1);
@@ -535,12 +536,16 @@ void FileSelector::renderListView(ImVec2 size) {
 				ImGui::EndPopup();
 			}
 
-			// show date
+			// show type
 			ImGui::TableSetColumnIndex(1);
-			ImGui::TextUnformatted(entry.updateString.c_str());
+			ImGui::TextUnformatted(entry.typeString.c_str());
+
+			// show date
+			ImGui::TableSetColumnIndex(2);
+			ImGui::TextUnformatted(entry.dateString.c_str());
 
 			// show size
-			ImGui::TableSetColumnIndex(2);
+			ImGui::TableSetColumnIndex(3);
 			ImGui::TextUnformatted(entry.sizeString.c_str());
 		});
 
@@ -1330,16 +1335,17 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 				// get entry metadata and set state
 				entry.path = node.path();
 				entry.isDirectory = node.is_directory();
-				entry.size = node.is_regular_file() ? node.file_size() : 0;
-				entry.extension = node.is_regular_file() ? pathToString(entry.path.extension()) : "";
+				entry.size = entry.isDirectory ? 0 : node.file_size();
+				entry.extension = entry.isDirectory ? "" : pathToString(entry.path.extension());
 				entry.lastUpdate = node.last_write_time();
 				entry.isHidden = isHidden(entry.path);
 				entry.isSelected = false;
 
 				// precalculate strings for faster rendering
 				entry.nameString = pathToString(entry.path.filename());
+				entry.typeString = entry.isDirectory ? labels.director : entry.extension;
 				entry.sizeString = entry.isDirectory ? "    ---" : entry.readableSize(labels);
-				entry.updateString = entry.readableDate(labels);
+				entry.dateString = entry.readableDate(labels);
 
 				// precalculate sort string
 				auto sortString = entry.path.filename().generic_wstring();
@@ -1460,6 +1466,11 @@ void FileSelector::Listing::sort() {
 			return (sortOrder == SortOrder::ascending)
 				? left.sortString < right.sortString
 				: left.sortString > right.sortString;
+
+		} else if (sortColumn == SortColumn::type) {
+			return (sortOrder == SortOrder::ascending)
+				? left.typeString < right.typeString
+				: left.typeString > right.typeString;
 
 		} else if (sortColumn == SortColumn::date) {
 			return (sortOrder == SortOrder::ascending)

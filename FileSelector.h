@@ -43,6 +43,7 @@ public:
 	// sort options
 	enum class SortColumn {
 		name,
+		type,
 		date,
 		size
 	};
@@ -154,8 +155,10 @@ public:
 		std::string ok;
 		std::string cancel;
 		std::string nameColumn;
+		std::string typeColumn;
 		std::string dateColumn;
 		std::string sizeColumn;
+		std::string director;
 		std::string filter;
 		std::string favorites;
 		std::string clouds;
@@ -204,8 +207,10 @@ private:
 		"OK",
 		"Cancel",
 		"Name",
+		"Type",
 		"Date",
 		"Size",
+		"[dir]",
 		"filter...",
 		"Favorites",
 		"Clouds",
@@ -291,8 +296,9 @@ private:
 		bool isHidden;
 
 		std::string nameString;
+		std::string typeString;
+		std::string dateString;
 		std::string sizeString;
-		std::string updateString;
 		std::wstring sortString;
 
 		std::string readableSize(const Labels& labels);
