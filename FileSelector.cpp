@@ -602,7 +602,7 @@ void FileSelector::renderActionButtons() {
 		ImGui::BeginDisabled();
 	}
 
-	if (ImGui::Button(okLabel.c_str(), size) || (okAvailable && ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteAlways))) {
+	if (ImGui::Button(okLabel.c_str(), size) || (okAvailable && ImGui::Shortcut(ImGuiKey_Enter, ImGuiInputFlags_RouteOverActive))) {
 		handleOk();
 	}
 
