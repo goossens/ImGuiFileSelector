@@ -283,7 +283,7 @@ void FileSelector::renderFileDialog() {
 			ImGuiChildFlags_Borders |
 			ImGuiChildFlags_ResizeX;
 
-		if (ImGui::BeginChild("sideBar",ImVec2(glyphSize.x * state.sizeBarWidth, availableSpace.y), flags)) {
+		if (ImGui::BeginChild("sideBar",ImVec2(glyphSize.x * state.sizeBarWidthInGlyphs, availableSpace.y), flags)) {
 			renderSideBar();
 		}
 

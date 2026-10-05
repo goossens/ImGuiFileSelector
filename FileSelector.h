@@ -62,8 +62,8 @@ public:
 	inline SortColumn GetSortColumn() const { return state.sortColumn; }
 	inline void SetSortOrder(SortOrder value) { state.sortOrder = value; }
 	inline SortOrder GetSortOrder() const { return state.sortOrder; }
-	inline void SetSideBarWidth(size_t glyphs) { state.sizeBarWidth = glyphs; }
-	inline size_t GetSideBarWidth() const { return state.sizeBarWidth; }
+	inline void SetSideBarWidthInGlyphs(size_t glyphs) { state.sizeBarWidthInGlyphs = glyphs; }
+	inline size_t GetSideBarWidthInGlyphs() const { return state.sizeBarWidthInGlyphs; }
 
 	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
 	inline const std::filesystem::path& GetCurrentPath() const { return state.currentPath; }
@@ -147,11 +147,11 @@ public:
 		bool showHidden = false;
 		SortColumn sortColumn = SortColumn::name;
 		SortOrder sortOrder = SortOrder::ascending;
-		size_t sizeBarWidth = 25;
+		size_t sizeBarWidthInGlyphs = 25;
 	};
 
-	const State& GetCurrentState() const { return state; }
-	void RestoreState(const State& newState) { state = newState; }
+	inline const State& GetCurrentState() const { return state; }
+	inline void RestoreState(const State& newState) { state = newState; }
 
 	// internationalization support (default language is US English)
 	struct Labels {

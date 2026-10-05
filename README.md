@@ -29,6 +29,7 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 	- Select a file to save to.
 	- Select multiple files.
 	- select a directory.
+- Labels and action names can be fully customized to support internationalization.
 - API calls are available to see what user selected, see [example](example/selector.cpp) and [documentation](docs/overview.md).
 - Provides optional sidebar for quick navigation to favorites, cloud, locations and/or media.
 - Sidebar groups are collapsible and are are hidden when empty.
