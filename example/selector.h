@@ -34,4 +34,9 @@ private:
 	bool showHidden = false;
 	bool showDebugWindow = false;
 	std::string extensionFilter;
+
+	static constexpr const char* formats[] = { "PNG", "JPEG", "TIFF", "GIF" };
+	static constexpr const char* formatExtensions[] = { ".png", ".jpeg", ".tiff", ".gif" };
+	static constexpr size_t formatCount = sizeof(formats) / sizeof(formats[0]);
+	size_t selectedFormat = 0;
 };

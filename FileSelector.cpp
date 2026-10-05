@@ -116,6 +116,18 @@ bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter,
 
 
 //
+//	FileSelector::SetSelectedExtension
+//
+
+void FileSelector::SetSelectedExtension(const std::filesystem::path& extension) {
+	if (mode == Mode::saveAs && saveAsString.size()) {
+		selectedPath.replace_extension(extension);
+		saveAsString = pathToString(stringToPath(saveAsString).replace_extension(extension));
+	}
+}
+
+
+//
 //	FileSelector::Render
 //
 

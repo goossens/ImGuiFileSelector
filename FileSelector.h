@@ -112,6 +112,10 @@ public:
 	inline const std::filesystem::path& GetSelectedPath() const { return selectedPath; }
 	inline const std::vector<std::filesystem::path>& GetSelectedPaths() const { return selectedPaths; }
 
+	// this API only works with an active save as dialog
+	// and is therefore only useful in an accessory view callback
+	void SetSelectedExtension(const std::filesystem::path& extension);
+
 	// render the file selector widget
 	// it is safe to call this every frame as it's a NOOP if no selectors are active
 	// returns true if user made selection(s) or cancelled (use selection status above)
@@ -472,6 +476,17 @@ private:
 
 #else
 		return path.u8string();
+#endif
+	}
+
+	static inline std::filesystem::path stringToPath(const std::string& string) {
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
+		return std::filesystem::path(
+			reinterpret_cast<const char8_t*>(string.data()),
+			reinterpret_cast<const char8_t*>(string.data() + string.size()));
+
+#else
+		return std::filesystem::u8path(string);
 #endif
 	}
 

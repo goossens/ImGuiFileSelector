@@ -98,11 +98,7 @@ void Selector::render() {
 	ImGui::SameLine();
 
 	if (ImGui::Button("Save As") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S)) {
-		static constexpr const char* formats[] = { "PNG", "JPEG", "TIFF", "GIF" };
-		static constexpr size_t formatCount = sizeof(formats) / sizeof(formats[0]);
-		static size_t selectedFormat = 0;
-
-		selector.SaveAs({}, []() {
+		selector.SaveAs({}, [this]() {
 			auto pos = ImGui::GetCursorScreenPos();
 			auto glyphWidth = ImGui::CalcTextSize("#").y;
 			auto selectorWidth = glyphWidth * 5.0f;
@@ -119,6 +115,7 @@ void Selector::render() {
 
 					if (ImGui::Selectable(formats[i], isSelected)) {
 						selectedFormat = i;
+						selector.SetSelectedExtension(formatExtensions[i]);
 					}
 
 					if (isSelected) {
@@ -154,6 +151,7 @@ void Selector::render() {
 			logger.Add("File [" + selector.GetSelectedPath().string() + "] selected for open");
 
 		} else if (selector.SelectedSaveAs()) {
+			selector.SetSelectedExtension(formatExtensions[selectedFormat]);
 			logger.Add("File [" + selector.GetSelectedPath().string() + "] selected for save as");
 
 		} else if (selector.SelectedFiles()) {
