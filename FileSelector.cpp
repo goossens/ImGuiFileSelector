@@ -40,6 +40,17 @@ FileSelector::FileSelector() : listing(labels) {
 
 
 //
+//	FileSelector::ResetCurrentPath
+//
+
+bool FileSelector::ResetCurrentPath(const std::filesystem::path& newStartPath) {
+	pathHistory.clear();
+	historyIndex = 0;
+	return setCurrentPath(newStartPath);
+}
+
+
+//
 //	FileSelector::OpenFile
 //
 

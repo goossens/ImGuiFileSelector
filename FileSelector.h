@@ -68,6 +68,9 @@ public:
 	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
 	inline const std::filesystem::path& GetCurrentPath() const { return state.currentPath; }
 
+	// reset current path and remove old history
+	bool ResetCurrentPath(const std::filesystem::path& newStartPath);
+
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
 	// accessoryView is a callback function to render custom items above the action buttons
