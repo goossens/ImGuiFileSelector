@@ -21,7 +21,7 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 ## Features
 
 - Works on MacOS, Linux and Windows.
-- Works with latest Dear ImGui version (currently v1.92.8 && v1.92.9) and does not use deprecated functions.
+- Works with latest Dear ImGui version (currently v1.92.9 and 1.93.0) and does not use deprecated functions.
 - Is C++17 based (not unreasonable in 2026 I think) although Dear ImGui still uses C++11.
 - Has no runtime dependencies other than Dear ImGui and the C++17 Standard Template Library (STL).
 - Offers four different modes:
