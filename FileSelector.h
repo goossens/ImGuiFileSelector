@@ -14,7 +14,6 @@
 
 #include <filesystem>
 #include <functional>
-#include <regex>
 #include <string>
 #include <vector>
 
@@ -334,10 +333,6 @@ private:
 		void setExtensionFilter(const std::string& filter);
 		void setUserFilter(const std::string& filter);
 
-		// get status
-		inline bool isUserFilterValid() const { return filterValid; }
-		inline const std::string& getError() const { return error; }
-
 		// iterate through listing
 		void forEach(std::function<void(Entry&)> callback);
 
@@ -353,10 +348,7 @@ private:
 		SortOrder sortOrder = SortOrder::ascending;
 		bool showHidden = false;
 		std::vector<std::string> extensions;
-		bool filterActive = false;
-		bool filterValid = false;
-		std::regex filterRegex;
-		std::string error;
+		ImGuiTextFilter userFilter;
 
 		// support functions
 		void sort();

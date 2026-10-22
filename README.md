@@ -39,7 +39,13 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 - Directory filtering:
 	- Show/hide hidden files/directories.
 	- Filter files by extension.
-	- Text based name filtering.
+	- Text based name filtering based on standard Dear ImGui text filtering.
+		- ""         display all entries
+		- xxx        display entries containing "xxx"
+		- xxx yyy    display entries containing "xxx" and "yyy"
+		- "xxx yyy"  display entries containing "xxx yyy"
+		- xxx,yyy    display entries containing "xxx" or "yyy"
+		- -xxx       hide entries containing "xxx"
 - Directories can be sorted (ascending/descending) by name, date or size.
 - Quick navigation to any parent directory.
 - Quick navigation to places recently visited.

@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <locale>
+#include <regex>
 #include <sstream>
 
 #include "FileSelector.h"
@@ -461,20 +462,8 @@ void FileSelector::renderHeader() {
 	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.75f, pos.y));
 	ImGui::SetNextItemWidth(width * 0.25f);
 
-	// mark filed as invalid if invalid regular expression is entered
-	ImGui::PushStyleColor(ImGuiCol_FrameBg, listing.isUserFilterValid()
-		? ImGui::GetColorU32(ImGuiCol_FrameBg)
-		: IM_COL32(255, 32, 32, 128));
-
 	if (inputStringWithHint("###filter", labels.filter.c_str(), &filterString)) {
 		listing.setUserFilter(filterString);
-	}
-
-	ImGui::PopStyleColor();
-
-	// show regular expression error as tooltip (if required)
-	if (!listing.isUserFilterValid()) {
-		ImGui::SetItemTooltip("%s", listing.getError().c_str());
 	}
 
 	spacing();
@@ -1360,8 +1349,6 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 	auto& collateFacet = std::use_facet<std::collate<wchar_t>>(locale);
 
 	try {
-		error = "";
-
 		for (const auto& node : std::filesystem::directory_iterator(path)) {
 			if (node.is_regular_file() || (node.is_directory() && isAccessible(node.path()))) {
 				// create a new entry
@@ -1399,8 +1386,7 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 		currentPath = path;
 		lastWriteTime = std::filesystem::last_write_time(path);
 
-	} catch (const std::filesystem::filesystem_error& e) {
-		error = e.what();
+	} catch (const std::filesystem::filesystem_error&) {
 		success = false;
 	}
 
@@ -1441,26 +1427,12 @@ void FileSelector::Listing::setExtensionFilter(const std::string& filter) {
 //
 
 void FileSelector::Listing::setUserFilter(const std::string& filter) {
-	// specify a new user filter (based on regular expression rules)
-	filterValid = true;
+	std::copy_n(
+		filter.c_str(),
+		std::min(filter.size() + 1, sizeof(userFilter.InputBuf)),
+		userFilter.InputBuf);
 
-	if (filter.size()) {
-		try {
-			filterRegex.assign(filter, std::regex_constants::icase);
-			filterActive = true;
-			error.clear();
-
-		} catch (const std::regex_error& e) {
-			filterActive = false;
-			filterValid = false;
-			error = e.what();
-		}
-
-	} else {
-		filterRegex = std::regex();
-		filterActive = false;
-		error.clear();
-	}
+	userFilter.Build();
 }
 
 
@@ -1541,8 +1513,10 @@ bool FileSelector::Listing::filter(const Entry& entry) {
 	}
 
 	// filter entry by user request
-	if (filterActive && !std::regex_search(entry.nameString, filterRegex)) {
-		return false;
+	if (userFilter.IsActive()) {
+		if (!userFilter.PassFilter(entry.nameString.c_str())) {
+			return false;
+		}
 	}
 
 	return true;
