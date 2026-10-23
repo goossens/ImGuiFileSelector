@@ -76,16 +76,6 @@ void Selector::render() {
 	}
 
 	// manage options
-	if (ImGui::Checkbox("Show Sidebar", &showSideBar)) {
-		selector.SetShowSideBar(showSideBar);
-	}
-
-	ImGui::SameLine();
-
-	if (ImGui::Checkbox("Show Hidden", &showHidden)) {
-		selector.SetShowHidden(showHidden);
-	}
-
 	ImGui::SetNextItemWidth(ImGui::CalcTextSize("#").x * 30.0f);
 	inputString("Extension filter", &extensionFilter);
 

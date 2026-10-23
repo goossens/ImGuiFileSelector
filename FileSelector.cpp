@@ -21,6 +21,8 @@
 #include <regex>
 #include <sstream>
 
+#include "imgui_internal.h"
+
 #include "FileSelector.h"
 
 
@@ -184,7 +186,7 @@ bool FileSelector::Render() {
 		// see if user made selection
 		if (action != Action::none && action != Action::cancelled) {
 			// remove recent places entry to avoid duplication (if required)
-			auto i = std::find(state.recentPlaces.begin(), state.recentPlaces.end(), state.currentPath);
+			const auto i = std::find(state.recentPlaces.begin(), state.recentPlaces.end(), state.currentPath);
 
 			if (i != state.recentPlaces.end()) {
 				state.recentPlaces.erase(i);
@@ -309,7 +311,13 @@ void FileSelector::renderFileDialog() {
 		const auto availableSpace = ImGui::GetContentRegionAvail();
 		const auto accessorHeight = accessoryView ? 1.0f + accessoryViewHeight + extraSpacing * 2.0f + itemSpacing.y * 2.0f : 0.0f;
 		const auto actionButtonHeight = frameHeight * 1.5f + itemSpacing.y * 2.0f;
-		renderListView(ImVec2(availableSpace.x, availableSpace.y - actionButtonHeight - accessorHeight));
+		const auto size = ImVec2(availableSpace.x, availableSpace.y - actionButtonHeight - accessorHeight);
+
+		switch (state.view) {
+			case View::icons: renderIconView(size); break;
+			case View::list: renderListView(size); break;
+			case View::columns: renderColumnsView(size); break;
+		}
 
 		if (accessoryView) {
 			spacing();
@@ -378,14 +386,14 @@ void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& gr
 
 void FileSelector::renderHeader() {
 	// render header part of common area
-	auto width = ImGui::GetContentRegionAvail().x;
+	const auto width = ImGui::GetContentRegionAvail().x;
 	spacing();
 
 	// render filename input if we are in "SaveAs" mode
 	if (mode == Mode::saveAs) {
-		auto saveAsPos = ImGui::GetCursorScreenPos();
-		auto saveAsWidth = glyphSize.x * 30.0f;
-		auto totalWidth = ImGui::CalcTextSize(labels.saveAs.c_str()).x + itemSpacing.x + saveAsWidth;
+		const auto saveAsPos = ImGui::GetCursorScreenPos();
+		const auto saveAsWidth = glyphSize.x * 30.0f;
+		const auto totalWidth = ImGui::CalcTextSize(labels.saveAs.c_str()).x + itemSpacing.x + saveAsWidth;
 		ImGui::SetCursorScreenPos(ImVec2(saveAsPos.x + (width - totalWidth) * 0.5f, saveAsPos.y));
 		ImGui::AlignTextToFramePadding();
 		ImGui::TextUnformatted(labels.saveAs.c_str());
@@ -401,7 +409,6 @@ void FileSelector::renderHeader() {
 	}
 
 	// render history navigation buttons
-	const auto pos = ImGui::GetCursorScreenPos();
 	auto disabled = historyIndex <= 1;
 	if (disabled) { ImGui::BeginDisabled(); }
 
@@ -421,13 +428,85 @@ void FileSelector::renderHeader() {
 	}
 
 	if (disabled) { ImGui::EndDisabled(); }
+	ImGui::SameLine();
+
+	// render view selector
+	ImGui::SetNextItemWidth(glyphSize.x * 6.0f);
+
+	if (ImGui::BeginCombo("##view", nullptr)) {
+		ImGui::MenuItem(labels.showSideBar.c_str(), nullptr, &state.showSideBar);
+		ImGui::MenuItem(labels.showHidden.c_str(), nullptr, &state.showHidden);
+		ImGui::Separator();
+		ImGui::TextDisabled("%s", labels.showItemsAs.c_str());
+		bool selected;
+		selected = state.view == View::icons; if (ImGui::MenuItem(labels.icons.c_str(), nullptr, selected)) { state.view = View::icons; }
+		selected = state.view == View::list; if (ImGui::MenuItem(labels.list.c_str(), nullptr, selected)) { state.view = View::list; }
+		selected = state.view == View::columns; if (ImGui::MenuItem(labels.columns.c_str(), nullptr, selected)) { state.view = View::columns; }
+		ImGui::EndCombo();
+	}
+
+	if (ImGui::BeginComboPreview()) {
+		const auto drawlist = ImGui::GetWindowDrawList();
+		const auto pos = ImGui::GetCursorScreenPos();
+		const auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+
+		switch (state.view) {
+			case View::icons: {
+				const auto rectangle = [drawlist, color](ImVec2 p, ImVec2 s) {
+					drawlist->AddRect(p, p + s, color);
+				};
+
+				const auto gap = 1.0f;
+				const auto side = (glyphSize.y - gap) * 0.5f;
+				const auto size = ImVec2(side, side);
+				rectangle(pos, size);
+				rectangle(pos + ImVec2(side + gap, 0.0f), size);
+				rectangle(pos + ImVec2(0.0f, side + gap), size);
+				rectangle(pos + ImVec2(side + gap, side + gap), size);
+				break;
+			}
+
+			case View::list: {
+				const auto line = [drawlist, color](ImVec2 p, float w) {
+					drawlist->AddCircle(p + ImVec2(1.0f, 0.0f), 1.0f, color);
+					drawlist->AddLineH(p.x + 3.0f, p.x + w, p.y, color);
+				};
+
+				const auto iconWidth = glyphSize.y;
+				line(pos + ImVec2(0.0f, 2.0f), iconWidth);
+				line(pos + ImVec2(0.0f, glyphSize.y * 0.5f), iconWidth);
+				line(pos + ImVec2(0.0f, glyphSize.y - 2.0f), iconWidth);
+				break;
+			}
+
+			case View::columns: {
+				const auto rectangle = [drawlist, color](ImVec2 p, ImVec2 s) {
+					drawlist->AddRect(p, p + s, color);
+				};
+
+				const auto columnWidth = glyphSize.y / 3.0f;
+				const auto size = ImVec2(columnWidth, glyphSize.y);
+				rectangle(pos, size);
+				rectangle(pos + ImVec2(columnWidth, 0.0f), size);
+				rectangle(pos + ImVec2(columnWidth * 2.0f, 0.0f), size);
+				break;
+			}
+		}
+
+		ImGui::EndComboPreview();
+	}
 
 	// render path selector and recent places
-	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.25f, pos.y));
+	ImGui::SameLine();
+	const auto pathSelectorWidth = glyphSize.x * 25.0f;
+	const auto filterWidth = glyphSize.x * 20.0f;
+	const auto selectorFilterGap = (ImGui::GetContentRegionAvail().x - pathSelectorWidth - filterWidth) * 0.5f;
+	ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(selectorFilterGap, 0.0f));
+
 	const float itemHeight = ImGui::GetTextLineHeightWithSpacing();
 	const float popupHeight = itemHeight * 12 + ImGui::GetStyle().FramePadding.y * 4.0f;
 	ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, popupHeight));
-	ImGui::SetNextItemWidth(width * 0.4f);
+	ImGui::SetNextItemWidth(pathSelectorWidth);
 
 	if (ImGui::BeginCombo("###pathSelector", pathStack[0].name.c_str())) {
 		for (auto i = pathStack.begin() + 1; i < pathStack.end(); i++) {
@@ -445,7 +524,7 @@ void FileSelector::renderHeader() {
 
 		for (auto i = state.recentPlaces.begin(); i < state.recentPlaces.end(); i++) {
 			ImGui::PushID(&(*i));
-			auto name = pathToString(i->filename());
+			const auto name = pathToString(i->filename());
 
 			if (ImGui::Selectable(reinterpret_cast<const char*>(name.c_str()))) {
 				nextPath = *i;
@@ -459,14 +538,25 @@ void FileSelector::renderHeader() {
 
 	// render user filter input field
 	ImGui::SameLine();
-	ImGui::SetCursorScreenPos(ImVec2(pos.x + width * 0.75f, pos.y));
-	ImGui::SetNextItemWidth(width * 0.25f);
+	ImGui::SetCursorScreenPos(ImGui::GetCursorScreenPos() + ImVec2(selectorFilterGap, 0.0f));
+	ImGui::SetNextItemWidth(filterWidth);
 
 	if (inputStringWithHint("###filter", labels.filter.c_str(), &filterString)) {
 		listing.setUserFilter(filterString);
 	}
 
 	spacing();
+}
+
+
+//
+//	FileSelector::renderIconView
+//
+
+void FileSelector::renderIconView(ImVec2 size) {
+	ImGui::BeginChild("icons", size, ImGuiChildFlags_Borders);
+	ImGui::TextUnformatted("Not yet implemented");
+	ImGui::EndChild();
 }
 
 
@@ -579,6 +669,17 @@ void FileSelector::renderListView(ImVec2 size) {
 
 
 //
+//	FileSelector::renderColumnsView
+//
+
+void FileSelector::renderColumnsView(ImVec2 size) {
+	ImGui::BeginChild("icons", size, ImGuiChildFlags_Borders);
+	ImGui::TextUnformatted("Not yet implemented");
+	ImGui::EndChild();
+}
+
+
+//
 //	FileSelector::renderActionButtons
 //
 
@@ -594,10 +695,10 @@ void FileSelector::renderActionButtons() {
 	ImGui::SameLine();
 
 	// select label for "OK" button
-	std::string& okLabel = (mode == Mode::openFile) ? labels.open : (mode == Mode::saveAs) ? labels.save : labels.select;
+	const std::string& okLabel = (mode == Mode::openFile) ? labels.open : (mode == Mode::saveAs) ? labels.save : labels.select;
 
 	// right align buttons
-	auto size = rightAlign(labels.cancel, okLabel);
+	const auto size = rightAlign(labels.cancel, okLabel);
 
 	// handle cancel button and shortcut
 	if (ImGui::Button(labels.cancel.c_str(), size)) {
@@ -655,7 +756,7 @@ void FileSelector::renderOverWritePopup() {
 		ImGui::TextUnformatted(labels.fileExists.c_str());
 
 		spacing();
-		auto size = rightAlign(labels.cancel, labels.ok);
+		const auto size = rightAlign(labels.cancel, labels.ok);
 
 		if (ImGui::Button(labels.cancel.c_str(), size)) {
 			ImGui::CloseCurrentPopup();
@@ -712,7 +813,7 @@ void FileSelector::renderNewFolderPopup() {
 		}
 
 		spacing();
-		auto size = rightAlign(labels.cancel, labels.create);
+		const auto size = rightAlign(labels.cancel, labels.create);
 
 		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 			ImGui::CloseCurrentPopup();
@@ -783,7 +884,7 @@ void FileSelector::renderRenamePopup() {
 		}
 
 		spacing();
-		auto size = rightAlign(labels.cancel, labels.rename);
+		const auto size = rightAlign(labels.cancel, labels.rename);
 
 		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 			ImGui::CloseCurrentPopup();
@@ -881,7 +982,7 @@ void FileSelector::renderPermissionsPopup() {
 		}
 
 		spacing();
-		auto size = rightAlign(labels.cancel, labels.ok);
+		const auto size = rightAlign(labels.cancel, labels.ok);
 
 		if (ImGui::Button(labels.cancel.c_str(), size) || ImGui::Shortcut(ImGuiKey_Escape)) {
 			ImGui::CloseCurrentPopup();
@@ -932,7 +1033,7 @@ void FileSelector::renderErrorPopup() {
 		ImGui::TextUnformatted(errorMessage.c_str());
 
 		spacing();
-		auto size = rightAlign(labels.ok);
+		const auto size = rightAlign(labels.ok);
 
 		if (ImGui::Button(labels.ok.c_str(), size)) {
 			ImGui::CloseCurrentPopup();
@@ -1562,13 +1663,13 @@ std::string FileSelector::Entry::readableSize(const Labels& labels) {
 
 std::string FileSelector::Entry::readableDate(const Labels& labels) {
 	// turn date into user readable string
-	auto wallNow = std::chrono::system_clock::now();
-	auto fileNow = std::filesystem::file_time_type::clock::now();
+	const auto wallNow = std::chrono::system_clock::now();
+	const auto fileNow = std::filesystem::file_time_type::clock::now();
 
-	auto duration = lastUpdate - fileNow;
-	auto sysTime = wallNow + std::chrono::duration_cast<std::chrono::system_clock::duration>(duration);
+	const auto duration = lastUpdate - fileNow;
+	const auto sysTime = wallNow + std::chrono::duration_cast<std::chrono::system_clock::duration>(duration);
 
-	auto tt = std::chrono::system_clock::to_time_t(sysTime);
+	const auto tt = std::chrono::system_clock::to_time_t(sysTime);
 	std::tm localTime;
 
 #ifdef _WIN32
@@ -1697,14 +1798,14 @@ std::filesystem::path FileSelector::getHome() {
 	}
 
 	// fallback to environment variables if API fails
-	auto userProfile = std::getenv("USERPROFILE");
+	const auto userProfile = std::getenv("USERPROFILE");
 
 	if (userProfile) {
 		return std::filesystem::path(userProfile);
 	}
 
-	auto homeDrive = std::getenv("HOMEDRIVE");
-	auto homePath = std::getenv("HOMEPATH");
+	const auto homeDrive = std::getenv("HOMEDRIVE");
+	const auto homePath = std::getenv("HOMEPATH");
 
 	if (homeDrive && homePath) {
 		return std::filesystem::path(std::string(homeDrive) + std::string(homePath));
@@ -1712,14 +1813,14 @@ std::filesystem::path FileSelector::getHome() {
 
 #else
 	// try environment first
-	auto home = std::getenv("HOME");
+	const auto home = std::getenv("HOME");
 
 	if (home) {
 		return std::filesystem::path(home);
 	}
 
 	// fallback: read the password database record for the current UID
-	struct passwd* pw = getpwuid(geteuid());
+	const struct passwd* pw = getpwuid(geteuid());
 
 	if (pw && pw->pw_dir) {
 		return std::filesystem::path(pw->pw_dir);
@@ -1742,11 +1843,11 @@ bool FileSelector::isHidden(const std::filesystem::path& path) {
 	}
 
 #ifdef _WIN32
-	auto dwAttr = GetFileAttributesW(path.c_str());
+	const auto dwAttr = GetFileAttributesW(path.c_str());
 	return (dwAttr == INVALID_FILE_ATTRIBUTES) ? false : ((dwAttr & FILE_ATTRIBUTE_HIDDEN) != 0);
 
 #else
-	auto name = pathToString(path.filename());
+	const auto name = pathToString(path.filename());
 
 	if (!name.empty() && name[0] == '.') {
 		return true;
@@ -1841,7 +1942,7 @@ void FileSelector::getKnownDirectoryInfo(KnownDirectory type, std::string& name,
 	};
 
 	name = types[static_cast<size_t>(type)];
-	auto home = getHome();
+	const auto home = getHome();
 	path = home / name;
 
 	// initialize COM library
@@ -1879,7 +1980,7 @@ void FileSelector::getKnownDirectoryInfo(KnownDirectory type, std::string& name,
 	};
 
 	name = types[static_cast<size_t>(type)];
-	auto home = getHome();
+	const auto home = getHome();
 	path = home / name;
 
 	// locate the XDG user-dirs config file
@@ -1939,8 +2040,8 @@ void FileSelector::forEachKnownLocation(std::function<void(const std::string& na
 	std::filesystem::path volumes{"/Volumes"};
 
 	for (const auto& entry : std::filesystem::directory_iterator(volumes)) {
-		auto filename = pathToString(entry.path().filename());
-		auto path = std::filesystem::canonical(entry.path());
+		const auto filename = pathToString(entry.path().filename());
+		const auto path = std::filesystem::canonical(entry.path());
 
 		if (filename[0] != '.' && filename.rfind("com.", 0) != 0) {
 			callback(filename, path);
@@ -1960,10 +2061,10 @@ void FileSelector::forEachKnownLocation(std::function<void(const std::string& na
 		// get volume name
 		std::string volumeName;
 		GetVolumeInformationW(drive, buffer2.data(), MAX_PATH + 1, nullptr, nullptr, nullptr, nullptr, 0);
-		auto size = static_cast<int>(wcslen(buffer2.data()));
+		const auto size = static_cast<int>(wcslen(buffer2.data()));
 
 		if (size) {
-			auto sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, buffer2.data(), size, nullptr, 0, nullptr, nullptr);
+			const auto sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, buffer2.data(), size, nullptr, 0, nullptr, nullptr);
 
 			if (sizeNeeded) {
 				volumeName = std::string(sizeNeeded, 0);
@@ -1981,7 +2082,7 @@ void FileSelector::forEachKnownLocation(std::function<void(const std::string& na
 
 #else
 	// open the mounted filesystems table file
-	auto file = setmntent("/proc/mounts", "r");
+	const auto file = setmntent("/proc/mounts", "r");
 
 	if (file == nullptr) {
 		return;
@@ -2008,10 +2109,10 @@ void FileSelector::forEachKnownLocation(std::function<void(const std::string& na
 
 bool FileSelector::moveToTrashCan(const std::filesystem::path& path, std::string& errorMessage) {
 	// determine absolute path with .. and symbolic links resolved
-	auto canonicalPath = std::filesystem::canonical(path);
+	const auto canonicalPath = std::filesystem::canonical(path);
 
 #if __APPLE__
-	auto canonicalString = pathToString(canonicalPath);
+	const auto canonicalString = pathToString(canonicalPath);
 	void* pool = objc_autoreleasePoolPush();
 
 	id pathString = ((id(*)(Class, SEL, const char*)) objc_msgSend)(
@@ -2059,7 +2160,7 @@ bool FileSelector::moveToTrashCan(const std::filesystem::path& path, std::string
 	fileOp.wFunc = FO_DELETE;
 	fileOp.pFrom = canonicalString.data();
 	fileOp.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_SILENT;
-	auto errorCode = SHFileOperationW(&fileOp);
+	const auto errorCode = SHFileOperationW(&fileOp);
 
 	if (errorCode == 0) {
 		errorMessage.clear();
@@ -2096,7 +2197,7 @@ bool FileSelector::moveToTrashCan(const std::filesystem::path& path, std::string
 #else
 	// use desktop command to move files to trash
 	std::string command = "gio trash '" + pathToString(canonicalPath) + "'";
-	auto result = std::system(command.c_str()) == 0;
+	const auto result = std::system(command.c_str()) == 0;
 
 	if (result) {
 		errorMessage.clear();

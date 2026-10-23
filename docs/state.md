@@ -9,6 +9,7 @@ wherever they want in whatever format.
 	struct State {
 		std::filesystem::path currentPath;
 		std::vector<std::filesystem::path> recentPlaces;
+		View view = View::list;
 		bool showSideBar = true;
 		bool showHidden = false;
 		SortColumn sortColumn = SortColumn::name;

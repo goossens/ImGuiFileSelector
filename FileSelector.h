@@ -39,6 +39,13 @@ public:
 	// constructor
 	FileSelector();
 
+	// view modes
+	enum class View {
+		icons,
+		list,
+		columns
+	};
+
 	// sort options
 	enum class SortColumn {
 		name,
@@ -53,6 +60,8 @@ public:
 	};
 
 	//	access options/state
+	inline void SetView(View view) { state.view = view; }
+	inline View GetView() { return state.view; }
 	inline void SetShowSideBar(bool value) { state.showSideBar = value; }
 	inline bool GetShowSideBar() const { return state.showSideBar; }
 	inline void SetShowHidden(bool value) { state.showHidden = value; }
@@ -145,6 +154,7 @@ public:
 	struct State {
 		std::filesystem::path currentPath;
 		std::vector<std::filesystem::path> recentPlaces;
+		View view = View::list;
 		bool showSideBar = true;
 		bool showHidden = false;
 		SortColumn sortColumn = SortColumn::name;
@@ -175,6 +185,12 @@ public:
 		std::string locations;
 		std::string media;
 		std::string saveAs;
+		std::string showSideBar;
+		std::string showHidden;
+		std::string showItemsAs;
+		std::string icons;
+		std::string list;
+		std::string columns;
 		std::string newFolder;
 		std::string nameOfNewFolder;
 		std::string nameTaken;
@@ -227,6 +243,12 @@ private:
 		"Locations",
 		"Media",
 		"Save As:",
+		"Show Sidebar",
+		"Show Hidden",
+		"Show items as:",
+		"Icons",
+		"List",
+		"Columns",
 		"New Folder",
 		"Name of new folder:",
 		"This name is already taken.",
@@ -434,7 +456,9 @@ private:
 	void renderSideBar();
 	void renderSideBarGroup(const std::string& label, SideBarGroup& group);
 	void renderHeader();
+	void renderIconView(ImVec2 size);
 	void renderListView(ImVec2 size);
+	void renderColumnsView(ImVec2 size);
 	void renderActionButtons();
 	void renderPopups();
 	void renderOverWritePopup();
