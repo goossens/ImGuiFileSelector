@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "imgui.h"
+#include "imgui_internal.h"
 
 
 //
@@ -66,6 +67,10 @@ public:
 	inline bool GetShowSideBar() const { return state.showSideBar; }
 	inline void SetShowHidden(bool value) { state.showHidden = value; }
 	inline bool GetShowHidden() const { return state.showHidden; }
+	void SetUserFilter(const std::string& filter);
+	std::string GetUserFilter() const;
+	void SetExtensionFilter(const std::string& filter);
+	std::string GetExtensionFilter() const;
 	inline void SetSortColumn(SortColumn value) { state.sortColumn = value; }
 	inline SortColumn GetSortColumn() const { return state.sortColumn; }
 	inline void SetSortOrder(SortOrder value) { state.sortOrder = value; }
@@ -82,7 +87,7 @@ public:
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
 	// accessoryView is a callback function to render custom items above the action buttons
-	bool OpenFile(const std::string& extensionFilter={}, std::function<void()> accessoryView={}, float avHeight=0.0f);
+	bool OpenFile(std::function<void()> accessoryView={}, float avHeight=0.0f);
 
 	// start a selector to pick a path to save content to
 	// returns true if selector is opened and false if a previous selector is still active
@@ -92,7 +97,7 @@ public:
 	// start a selector to select one or more files
 	// returns true if selector is opened and false if a previous selector is still active
 	// accessoryView is a callback function to render custom items above the action buttons
-	bool SelectFiles(const std::string& extensionFilter={}, std::function<void()> accessoryView={}, float avHeight=0.0f);
+	bool SelectFiles(std::function<void()> accessoryView={}, float avHeight=0.0f);
 
 	// start a selector to select a directory
 	// returns true if selector is opened and false if a previous selector is still active
@@ -157,13 +162,15 @@ public:
 		View view = View::list;
 		bool showSideBar = true;
 		bool showHidden = false;
+		std::vector<std::string> extensionFilter;
+		ImGuiTextFilter userFilter;
 		SortColumn sortColumn = SortColumn::name;
 		SortOrder sortOrder = SortOrder::ascending;
 		size_t sizeBarWidthInGlyphs = 25;
 	};
 
+	void SetState(const State& newState) { state = newState; }
 	inline const State& GetCurrentState() const { return state; }
-	inline void RestoreState(const State& newState) { state = newState; }
 
 	// internationalization support (default language is US English)
 	struct Labels {
@@ -178,7 +185,7 @@ public:
 		std::string typeColumn;
 		std::string dateColumn;
 		std::string sizeColumn;
-		std::string director;
+		std::string directory;
 		std::string filter;
 		std::string favorites;
 		std::string clouds;
@@ -342,39 +349,26 @@ private:
 	// current directory listing
 	class Listing : public std::vector<Entry> {
 	public:
-		// constructor
-		Listing(Labels& labels) : labels(labels) {}
-
 		// load a specified path
-		bool load(const std::filesystem::path& path);
-		inline bool reload() { return load(currentPath); }
-
-		// set filter parameters
-		inline void setShowHidden(bool show) { showHidden = show; }
-		void setSort(SortColumn column, SortOrder order);
-		void setExtensionFilter(const std::string& filter);
-		void setUserFilter(const std::string& filter);
+		bool load(const std::filesystem::path& path, const State& state, const Labels& labels);
+		inline bool reload(const State& state, const Labels& labels) { return load(currentPath, state, labels); }
 
 		// iterate through listing
-		void forEach(std::function<void(Entry&)> callback);
+		void forEach(const State& state, std::function<void(Entry&)> callback);
 
 		// clear all selections
 		void clearSelections();
 
-	private:
+		// (re)sort entries
+		void sort(const State& state);
+
+		private:
 		// properties
-		Labels& labels;
 		std::filesystem::path currentPath;
 		std::filesystem::file_time_type lastWriteTime;
-		SortColumn sortColumn = SortColumn::name;
-		SortOrder sortOrder = SortOrder::ascending;
-		bool showHidden = false;
-		std::vector<std::string> extensions;
-		ImGuiTextFilter userFilter;
 
 		// support functions
-		void sort();
-		bool filter(const Entry& entry);
+		bool filter(const State& state, const Entry& entry);
 	} listing;
 
 	// known user directory types
@@ -449,7 +443,7 @@ private:
 	std::filesystem::path nextPath;
 
 	// local functions
-	bool openDialog(Mode mode, const std::string& filter, std::function<void()> accessoryView, float avHeight);
+	bool openDialog(Mode mode, std::function<void()> accessoryView, float avHeight);
 	bool setCurrentPath(const std::filesystem::path path, bool addHistory=true);
 
 	void renderFileDialog();

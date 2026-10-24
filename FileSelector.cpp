@@ -21,8 +21,6 @@
 #include <regex>
 #include <sstream>
 
-#include "imgui_internal.h"
-
 #include "FileSelector.h"
 
 
@@ -30,7 +28,7 @@
 //	FileSelector::FileSelector
 //
 
-FileSelector::FileSelector() : listing(labels) {
+FileSelector::FileSelector() {
 	// set current path to current working directory
 	setCurrentPath(std::filesystem::current_path());
 
@@ -39,6 +37,68 @@ FileSelector::FileSelector() : listing(labels) {
 	addDefaultClouds();
 	addDefaultLocations();
 	addDefaultMedia();
+}
+
+
+//
+//	FileSelector::SetUserFilter
+//
+
+void FileSelector::SetUserFilter(const std::string& filter) {
+	std::copy_n(
+		filter.c_str(),
+		std::min(filter.size() + 1, sizeof(state.userFilter.InputBuf)),
+		state.userFilter.InputBuf);
+
+	state.userFilter.Build();
+}
+
+
+//
+//	FileSelector::GetUserFilter
+//
+
+std::string FileSelector::GetUserFilter() const {
+	return std::string(state.userFilter.InputBuf);
+}
+
+
+//
+//	FileSelector::SetExtensionFilter
+//
+
+void FileSelector::SetExtensionFilter(const std::string& filter) {
+	// set new filter based on file extensions (empty filter means no filtering)
+	state.extensionFilter.clear();
+	std::stringstream ss(filter);
+	std::string extension;
+
+	while (std::getline(ss, extension, ',')) {
+		state.extensionFilter.emplace_back(extension);
+	}
+}
+
+
+//
+//	FileSelector::GetExtensionFilter
+//
+
+std::string FileSelector::GetExtensionFilter() const {
+	std::string filter;
+	bool first = true;
+
+	for (auto& extension : state.extensionFilter) {
+		if (first) {
+			first = false;
+
+		} else {
+			filter.append(",");
+		}
+
+		filter.append(extension);
+	}
+
+	return filter;
 }
 
 
@@ -57,8 +117,8 @@ bool FileSelector::ResetCurrentPath(const std::filesystem::path& newStartPath) {
 //	FileSelector::OpenFile
 //
 
-bool FileSelector::OpenFile(const std::string& extensionFilter, std::function<void()> av, float avHeight) {
-	return openDialog(Mode::openFile, extensionFilter, av, avHeight);
+bool FileSelector::OpenFile(std::function<void()> av, float avHeight) {
+	return openDialog(Mode::openFile, av, avHeight);
 }
 
 
@@ -83,7 +143,7 @@ bool FileSelector::SaveAs(const std::filesystem::path& defaultPath, std::functio
 		}
 	}
 
-	return openDialog(Mode::saveAs, "", av, avHeight);
+	return openDialog(Mode::saveAs, av, avHeight);
 }
 
 
@@ -91,8 +151,8 @@ bool FileSelector::SaveAs(const std::filesystem::path& defaultPath, std::functio
 //	FileSelector::SelectFiles
 //
 
-bool FileSelector::SelectFiles(const std::string& extensionFilter, std::function<void()> av, float avHeight) {
-	return openDialog(Mode::selectFiles, extensionFilter, av, avHeight);
+bool FileSelector::SelectFiles(std::function<void()> av, float avHeight) {
+	return openDialog(Mode::selectFiles, av, avHeight);
 }
 
 
@@ -101,7 +161,7 @@ bool FileSelector::SelectFiles(const std::string& extensionFilter, std::function
 //
 
 bool FileSelector::SelectDirectory(std::function<void()> av, float avHeight) {
-	return openDialog(Mode::selectDirectory, "", av, avHeight);
+	return openDialog(Mode::selectDirectory, av, avHeight);
 }
 
 
@@ -109,7 +169,7 @@ bool FileSelector::SelectDirectory(std::function<void()> av, float avHeight) {
 //	FileSelector::openDialog
 //
 
-bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter, std::function<void()> av, float avHeight) {
+bool FileSelector::openDialog(Mode openMode, std::function<void()> av, float avHeight) {
 	// don't open multiple instances
 	if (mode == Mode::idle) {
 		mode = openMode;
@@ -117,9 +177,7 @@ bool FileSelector::openDialog(Mode openMode, const std::string& extensionFilter,
 		accessoryViewHeight = avHeight;
 		selectedPath.clear();
 		selectedPaths.clear();
-		listing.reload();
-		listing.setUserFilter("");
-		listing.setExtensionFilter(extensionFilter);
+		listing.reload(state, labels);
 		requestOpen = true;
 		return true;
 
@@ -233,7 +291,7 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 	}
 
 	// try to reload the directory listing and check for errors
-	if (!listing.load(path)) {
+	if (!listing.load(path, state, labels)) {
 		return false;
 	}
 
@@ -542,7 +600,7 @@ void FileSelector::renderHeader() {
 	ImGui::SetNextItemWidth(filterWidth);
 
 	if (inputStringWithHint("###filter", labels.filter.c_str(), &filterString)) {
-		listing.setUserFilter(filterString);
+		SetUserFilter(filterString);
 	}
 
 	spacing();
@@ -586,12 +644,12 @@ void FileSelector::renderListView(ImVec2 size) {
 				sortSpecs->SpecsDirty = false;
 				state.sortColumn = static_cast<SortColumn>(sortSpecs->Specs->ColumnIndex);
 				state.sortOrder	= sortSpecs->Specs->SortDirection == ImGuiSortDirection_Ascending ? SortOrder::ascending : SortOrder::descending;
-				listing.setSort(state.sortColumn, state.sortOrder);
+				listing.sort(state);
 			}
 		}
 
 		// render each entry
-		listing.forEach([this](Entry& entry) {
+		listing.forEach(state, [this](Entry& entry) {
 			ImGui::TableNextRow();
 
 			// show filename
@@ -833,7 +891,7 @@ void FileSelector::renderNewFolderPopup() {
 				newFolderError = ec.message();
 
 			} else {
-				listing.reload();
+				listing.reload(state, labels);
 				ImGui::CloseCurrentPopup();
 			}
 		}
@@ -904,7 +962,7 @@ void FileSelector::renderRenamePopup() {
 				moveError = ec.message();
 
 			} else {
-				listing.reload();
+				listing.reload(state, labels);
 				ImGui::CloseCurrentPopup();
 			}
 		}
@@ -1002,7 +1060,7 @@ void FileSelector::renderPermissionsPopup() {
 				permissionsError = ec.message();
 
 			} else {
-				listing.reload();
+				listing.reload(state, labels);
 				ImGui::CloseCurrentPopup();
 			}
 		}
@@ -1437,7 +1495,7 @@ void FileSelector::permissionCheckBox(const std::string& label, std::filesystem:
 //	FileSelector::Listing::load
 //
 
-bool FileSelector::Listing::load(const std::filesystem::path& path) {
+bool FileSelector::Listing::load(const std::filesystem::path& path, const State& state, const Labels& labels) {
 	// we load to a temporary list first so we can detect errors
 	std::vector<Entry> entries;
 	bool success = true;
@@ -1466,7 +1524,7 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 
 				// precalculate strings for faster rendering
 				entry.nameString = pathToString(entry.path.filename());
-				entry.typeString = entry.isDirectory ? labels.director : entry.extension;
+				entry.typeString = entry.isDirectory ? labels.directory : entry.extension;
 				entry.sizeString = entry.isDirectory ? "    ---" : entry.readableSize(labels);
 				entry.dateString = entry.readableDate(labels);
 
@@ -1483,7 +1541,7 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 			emplace_back(entry);
 		}
 
-		sort();
+		sort(state);
 		currentPath = path;
 		lastWriteTime = std::filesystem::last_write_time(path);
 
@@ -1496,55 +1554,13 @@ bool FileSelector::Listing::load(const std::filesystem::path& path) {
 
 
 //
-//	FileSelector::Listing::setSort
-//
-
-void FileSelector::Listing::setSort(SortColumn column, SortOrder order) {
-	// set new sort parameters and resort listing
-	sortColumn = column;
-	sortOrder = order;
-	sort();
-}
-
-
-//
-//	FileSelector::Listing::setExtensionFilter
-//
-
-void FileSelector::Listing::setExtensionFilter(const std::string& filter) {
-	// set new filter based on file extensions (empty filter means no filtering)
-	extensions.clear();
-	std::stringstream ss(filter);
-	std::string extension;
-
-	while (std::getline(ss, extension, ',')) {
-		extensions.emplace_back(extension);
-	}
-}
-
-
-//
-//	FileSelector::Listing::setUserFilter
-//
-
-void FileSelector::Listing::setUserFilter(const std::string& filter) {
-	std::copy_n(
-		filter.c_str(),
-		std::min(filter.size() + 1, sizeof(userFilter.InputBuf)),
-		userFilter.InputBuf);
-
-	userFilter.Build();
-}
-
-
-//
 //	FileSelector::Listing::forEach
 //
 
-void FileSelector::Listing::forEach(std::function<void(Entry&)> callback) {
+void FileSelector::Listing::forEach(const State& state, std::function<void(Entry&)> callback) {
 	// iterate through all entries in listing by calling function for each
 	for (auto& entry : *this) {
-		if (filter(entry)) {
+		if (filter(state, entry)) {
 			callback(entry);
 		}
 	}
@@ -1567,26 +1583,27 @@ void FileSelector::Listing::clearSelections() {
 //	FileSelector::Listing::sort
 //
 
-void FileSelector::Listing::sort() {
+void FileSelector::Listing::sort(const State& state) {
 	// sort current entries
-	std::sort(begin(), end(), [this](const Entry& left, const Entry& right) {
-		if (sortColumn == SortColumn::name) {
-			return (sortOrder == SortOrder::ascending)
+	std::sort(begin(), end(), [state](const Entry& left, const Entry& right) {
+
+		if (state.sortColumn == SortColumn::name) {
+			return (state.sortOrder == SortOrder::ascending)
 				? left.sortString < right.sortString
 				: left.sortString > right.sortString;
 
-		} else if (sortColumn == SortColumn::type) {
-			return (sortOrder == SortOrder::ascending)
+		} else if (state.sortColumn == SortColumn::type) {
+			return (state.sortOrder == SortOrder::ascending)
 				? left.typeString < right.typeString
 				: left.typeString > right.typeString;
 
-		} else if (sortColumn == SortColumn::date) {
-			return (sortOrder == SortOrder::ascending)
+		} else if (state.sortColumn == SortColumn::date) {
+			return (state.sortOrder == SortOrder::ascending)
 				? left.lastUpdate < right.lastUpdate
 				: left.lastUpdate > right.lastUpdate;
 
-		} else if (sortColumn == SortColumn::size) {
-			return (sortOrder == SortOrder::ascending)
+		} else if (state.sortColumn == SortColumn::size) {
+			return (state.sortOrder == SortOrder::ascending)
 				? left.size < right.size
 				: left.size > right.size;
 		}
@@ -1600,22 +1617,22 @@ void FileSelector::Listing::sort() {
 //	FileSelector::Listing::filter
 //
 
-bool FileSelector::Listing::filter(const Entry& entry) {
+bool FileSelector::Listing::filter(const State& state, const Entry& entry) {
 	// filter entry by visibility
-	if (!showHidden && entry.isHidden) {
+	if (!state.showHidden && entry.isHidden) {
 		return false;
 	}
 
 	// filter entry by extension
-	if (!entry.isDirectory && extensions.size()) {
-		if (std::find(extensions.begin(), extensions.end(), entry.extension) == extensions.end()) {
+	if (!entry.isDirectory && state.extensionFilter.size()) {
+		if (std::find(state.extensionFilter.begin(), state.extensionFilter.end(), entry.extension) == state.extensionFilter.end()) {
 			return false;
 		}
 	}
 
 	// filter entry by user request
-	if (userFilter.IsActive()) {
-		if (!userFilter.PassFilter(entry.nameString.c_str())) {
+	if (state.userFilter.IsActive()) {
+		if (!state.userFilter.PassFilter(entry.nameString.c_str())) {
 			return false;
 		}
 	}
@@ -1847,16 +1864,16 @@ bool FileSelector::isHidden(const std::filesystem::path& path) {
 	return (dwAttr == INVALID_FILE_ATTRIBUTES) ? false : ((dwAttr & FILE_ATTRIBUTE_HIDDEN) != 0);
 
 #else
-	const auto name = pathToString(path.filename());
+	const auto filename = pathToString(path.filename());
 
-	if (!name.empty() && name[0] == '.') {
+	if (!filename.empty() && filename[0] == '.') {
 		return true;
 	}
 
 #if __APPLE__
 	struct stat info;
 
-	if (stat(name.c_str(), &info) == 0) {
+	if (stat(pathToString(path).c_str(), &info) == 0) {
 		if (info.st_flags & UF_HIDDEN) {
 			return true;
 		}

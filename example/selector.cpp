@@ -81,7 +81,8 @@ void Selector::render() {
 
 	// trigger file selectors through a button or shortcut
 	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O)) {
-		selector.OpenFile(extensionFilter);
+		selector.SetExtensionFilter(extensionFilter);
+		selector.OpenFile();
 		logger.Add("Opened file selector");
 	}
 
@@ -124,7 +125,8 @@ void Selector::render() {
 	ImGui::SameLine();
 
 	if (ImGui::Button("Select Files")) {
-		selector.SelectFiles(extensionFilter);
+		selector.SetExtensionFilter(extensionFilter);
+		selector.SelectFiles();
 		logger.Add("Opened select files");
 	}
 

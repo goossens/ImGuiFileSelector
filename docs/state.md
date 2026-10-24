@@ -12,6 +12,8 @@ wherever they want in whatever format.
 		View view = View::list;
 		bool showSideBar = true;
 		bool showHidden = false;
+		std::vector<std::string> extensionFilter;
+		ImGuiTextFilter userFilter;
 		SortColumn sortColumn = SortColumn::name;
 		SortOrder sortOrder = SortOrder::ascending;
 		size_t sizeBarWidthInGlyphs = 25;
