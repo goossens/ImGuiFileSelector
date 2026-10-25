@@ -78,11 +78,8 @@ public:
 	inline void SetSideBarWidthInGlyphs(size_t glyphs) { state.sizeBarWidthInGlyphs = glyphs; }
 	inline size_t GetSideBarWidthInGlyphs() const { return state.sizeBarWidthInGlyphs; }
 
-	inline bool SetCurrentPath(const std::filesystem::path& path) { return setCurrentPath(path, false); }
-	inline const std::filesystem::path& GetCurrentPath() const { return state.currentPath; }
-
-	// reset current path and remove old history
-	bool ResetCurrentPath(const std::filesystem::path& newStartPath);
+	inline void SetCurrentPath(const std::filesystem::path& path) { nextPath = path; }
+	inline const std::filesystem::path& GetCurrentPath() const { return nextPath.empty() ? state.currentPath : nextPath; }
 
 	// start a selector to open a single file
 	// returns true if selector is opened and false if a previous selector is still active
@@ -108,14 +105,14 @@ public:
 	// this doesn't do anything if no selector is open
 	//
 	// it also doesn't need to be called when a selector completes as that is handled internally
-	inline void Close() { mode = Mode::idle; }
+	void Close();
 
 	// check currect selector state
 	inline bool IsOpen() const { return mode != Mode::idle; }
-	inline bool IsOpenFileOpen() const { return mode != Mode::openFile; }
-	inline bool IsSaveAsOpen() const { return mode != Mode::saveAs; }
-	inline bool IsSelectFilesOpen() const { return mode != Mode::selectFiles; }
-	inline bool IsSelectDirectoryOpen() const { return mode != Mode::selectDirectory; }
+	inline bool IsOpenFileOpen() const { return mode == Mode::openFile; }
+	inline bool IsSaveAsOpen() const { return mode == Mode::saveAs; }
+	inline bool IsSelectFilesOpen() const { return mode == Mode::selectFiles; }
+	inline bool IsSelectDirectoryOpen() const { return mode == Mode::selectDirectory; }
 
 	// get selection status
 	inline bool WasCancelled() const { return action == Action::cancelled; }
@@ -169,7 +166,7 @@ public:
 		size_t sizeBarWidthInGlyphs = 25;
 	};
 
-	void SetState(const State& newState) { state = newState; }
+	void SetState(const State& newState);
 	inline const State& GetCurrentState() const { return state; }
 
 	// internationalization support (default language is US English)
@@ -226,7 +223,7 @@ public:
 		std::string exoBytes;
 	};
 
-	inline void SetLabels(struct Labels& newLabels) { labels = newLabels; }
+	void SetLabels(struct Labels& newLabels);
 	inline const Labels& GetLabels() const { return labels; }
 
 private:
@@ -441,6 +438,7 @@ private:
 	std::string saveAsString;
 	std::string filterString;
 	std::filesystem::path nextPath;
+	bool refreshListing = false;
 
 	// local functions
 	bool openDialog(Mode mode, std::function<void()> accessoryView, float avHeight);

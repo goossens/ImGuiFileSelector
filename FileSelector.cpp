@@ -30,7 +30,7 @@
 
 FileSelector::FileSelector() {
 	// set current path to current working directory
-	setCurrentPath(std::filesystem::current_path());
+	nextPath = std::filesystem::current_path();
 
 	// add default sidebar links
 	addDefaultFavorites();
@@ -103,17 +103,6 @@ std::string FileSelector::GetExtensionFilter() const {
 
 
 //
-//	FileSelector::ResetCurrentPath
-//
-
-bool FileSelector::ResetCurrentPath(const std::filesystem::path& newStartPath) {
-	pathHistory.clear();
-	historyIndex = 0;
-	return setCurrentPath(newStartPath);
-}
-
-
-//
 //	FileSelector::OpenFile
 //
 
@@ -166,6 +155,18 @@ bool FileSelector::SelectDirectory(std::function<void()> av, float avHeight) {
 
 
 //
+//	FileSelector::Close
+//
+
+void FileSelector::Close() {
+	if (mode != Mode::idle) {
+		mode = Mode::idle;
+		action = Action::cancelled;
+	}
+}
+
+
+//
 //	FileSelector::openDialog
 //
 
@@ -177,7 +178,7 @@ bool FileSelector::openDialog(Mode openMode, std::function<void()> av, float avH
 		accessoryViewHeight = avHeight;
 		selectedPath.clear();
 		selectedPaths.clear();
-		listing.reload(state, labels);
+		refreshListing = true;
 		requestOpen = true;
 		return true;
 
@@ -273,6 +274,44 @@ bool FileSelector::Render() {
 
 
 //
+//	FileSelector::SetState
+//
+
+void FileSelector::SetState(const State& newState) {
+	if (std::filesystem::exists(newState.currentPath)) {
+		state.currentPath = newState.currentPath;
+	}
+
+	state.recentPlaces.clear();
+
+	for (auto& path : newState.recentPlaces) {
+		if (std::filesystem::exists(path)) {
+			state.recentPlaces.emplace_back(path);
+		}
+	}
+
+	state.view = newState.view;
+	state.showSideBar = newState.showSideBar;
+	state.showHidden = newState.showHidden;
+	state.extensionFilter = newState.extensionFilter;
+	state.userFilter = newState.userFilter;
+	state.sortColumn = newState.sortColumn;
+	state.sortOrder = newState.sortOrder;
+	state.sizeBarWidthInGlyphs = newState.sizeBarWidthInGlyphs;
+}
+
+
+//
+//	FileSelector::SetLabels
+//
+
+void FileSelector::SetLabels(Labels& newLabels) {
+	labels = newLabels;
+	refreshListing = true;
+}
+
+
+//
 //	FileSelector::setCurrentPath
 //
 
@@ -287,6 +326,11 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 	}
 
 	if (!isAccessible(canonicalPath)) {
+		return false;
+	}
+
+	// ignore request if we already are looking at this place
+	if (path == state.currentPath) {
 		return false;
 	}
 
@@ -337,8 +381,15 @@ bool FileSelector::setCurrentPath(const std::filesystem::path path, bool addHist
 void FileSelector::renderFileDialog() {
 	// update path (if required)
 	if (!nextPath.empty()) {
-		setCurrentPath(nextPath);
+		setCurrentPath(nextPath, true);
 		nextPath.clear();
+		refreshListing = false;
+	}
+
+	// refresh directory lists (if required)
+	if (refreshListing) {
+		listing.reload(state, labels);
+		refreshListing = false;
 	}
 
 	// get reusable values
@@ -672,7 +723,7 @@ void FileSelector::renderListView(ImVec2 size) {
 
 				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {
 					if (moveToTrashCan(entry.path, errorMessage)) {
-						nextPath = state.currentPath;
+						refreshListing = true;
 
 					} else {
 						openError = true;
@@ -891,7 +942,7 @@ void FileSelector::renderNewFolderPopup() {
 				newFolderError = ec.message();
 
 			} else {
-				listing.reload(state, labels);
+				refreshListing = true;
 				ImGui::CloseCurrentPopup();
 			}
 		}
@@ -962,7 +1013,7 @@ void FileSelector::renderRenamePopup() {
 				moveError = ec.message();
 
 			} else {
-				listing.reload(state, labels);
+				refreshListing = true;
 				ImGui::CloseCurrentPopup();
 			}
 		}
@@ -1060,7 +1111,7 @@ void FileSelector::renderPermissionsPopup() {
 				permissionsError = ec.message();
 
 			} else {
-				listing.reload(state, labels);
+				refreshListing = true;
 				ImGui::CloseCurrentPopup();
 			}
 		}
