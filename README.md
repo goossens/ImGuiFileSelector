@@ -36,6 +36,11 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 - Sidebar size can be adjusted by dragging right side.
 - Default sidebar is MacOS-like but can be completely [customized/adjusted](docs/sidebar.md).
 - Provides directory history navigation (backwards, forwards) as if they are hyperlinks in a browser.
+- Provides 3 view types that can be user selected or set through API:
+	- Icon view
+	- List view (default)
+	- Columns View
+= A small set of icons is include for icon view but a custom icon renderer can be provided by the application.
 - Directory filtering:
 	- Show/hide hidden files/directories.
 	- Filter files by extension.
@@ -58,6 +63,13 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 - Provides optional [accessory views](docs/accessoryviews.md) (e.g. custom format selector for Save As).
 - State is automatically preserved between selector popups while application is running.
 - API calls are available to [preserve state](docs/state.md) between application runs.
+
+## Integration
+
+This repository provides a simple mechanism to create file selector widget:
+
+- Include the FileSelector.cpp, FileSelector.h, FileSelectorIcons.cpp and FileSelectorIcons.h files in your project.
+- See the [documentation](docs/overview.md) on how to use the widget.
 
 ## Versioning
 
@@ -86,3 +98,8 @@ in the first place. Without you, this notification system would not exist.
 
 This work is licensed under the terms of the MIT license.
 For a copy, see <https://opensource.org/licenses/MIT>.
+
+The file and folder icons are derived from [Pictogrammers](https://pictogrammers.com/)
+that are released as free, open-source, and GPL friendly. You may use them
+for commercial projects, open-source projects, or anything really.
+Icons are distributed under the [Apache 2.0 license](https://www.apache.org/licenses/LICENSE-2.0).

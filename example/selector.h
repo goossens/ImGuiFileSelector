@@ -31,6 +31,7 @@ private:
 	FileSelector selector;
 	Logger logger;
 	bool showDebugWindow = false;
+	bool customFolderRenderer = false;
 	std::string extensionFilter;
 
 	static constexpr const char* formats[] = { "PNG", "JPEG", "TIFF", "GIF" };

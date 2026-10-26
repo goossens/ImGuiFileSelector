@@ -79,6 +79,26 @@ void Selector::render() {
 	ImGui::SetNextItemWidth(ImGui::CalcTextSize("#").x * 30.0f);
 	inputString("Extension filter", &extensionFilter);
 
+	if (ImGui::Checkbox("Use custom folder renderer", &customFolderRenderer)) {
+		if (customFolderRenderer) {
+			selector.SetCustomIconRenderer([](const FileSelector::CustomIcon& data) {
+				if (data.isDirectory) {
+					const auto center = data.pos + data.size * 0.5f;
+					const auto radius = data.size.x * 0.5f;
+					const auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
+					data.drawList->AddCircleFilled(center, radius, color);
+					return true;
+
+				} else {
+					return false;
+				}
+			});
+
+		} else {
+			selector.ClearCustomIconRenderer();
+		}
+	}
+
 	// trigger file selectors through a button or shortcut
 	if (ImGui::Button("Open File") || ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O)) {
 		selector.SetExtensionFilter(extensionFilter);

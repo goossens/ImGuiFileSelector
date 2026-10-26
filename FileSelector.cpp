@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include "FileSelector.h"
+#include "FileSelectorIcons.h"
 
 
 //
@@ -473,7 +474,7 @@ void FileSelector::renderSideBarGroup(const std::string& label, SideBarGroup& gr
 			for (auto& entry : group.entries) {
 				ImGui::PushID(&entry);
 
-				if (ImGui::Selectable(reinterpret_cast<const char*>(entry.name.c_str()))) {
+				if (ImGui::Selectable(entry.name.c_str())) {
 					// select path if group entry is selected
 					nextPath = entry.path;
 				}
@@ -555,14 +556,14 @@ void FileSelector::renderHeader() {
 	}
 
 	if (ImGui::BeginComboPreview()) {
-		const auto drawlist = ImGui::GetWindowDrawList();
+		const auto drawList = ImGui::GetWindowDrawList();
 		const auto pos = ImGui::GetCursorScreenPos();
 		const auto color = ImGui::GetColorU32(ImGuiCol_TextDisabled);
 
 		switch (state.view) {
 			case View::icons: {
-				const auto rectangle = [drawlist, color](ImVec2 p, ImVec2 s) {
-					drawlist->AddRect(p, p + s, color);
+				const auto rectangle = [drawList, color](ImVec2 p, ImVec2 s) {
+					drawList->AddRect(p, p + s, color);
 				};
 
 				const auto gap = 1.0f;
@@ -576,9 +577,9 @@ void FileSelector::renderHeader() {
 			}
 
 			case View::list: {
-				const auto line = [drawlist, color](ImVec2 p, float w) {
-					drawlist->AddCircle(p + ImVec2(1.0f, 0.0f), 1.0f, color);
-					drawlist->AddLineH(p.x + 3.0f, p.x + w, p.y, color);
+				const auto line = [drawList, color](ImVec2 p, float w) {
+					drawList->AddCircle(p + ImVec2(1.0f, 0.0f), 1.0f, color);
+					drawList->AddLineH(p.x + 3.0f, p.x + w, p.y, color);
 				};
 
 				const auto iconWidth = glyphSize.y;
@@ -589,8 +590,8 @@ void FileSelector::renderHeader() {
 			}
 
 			case View::columns: {
-				const auto rectangle = [drawlist, color](ImVec2 p, ImVec2 s) {
-					drawlist->AddRect(p, p + s, color);
+				const auto rectangle = [drawList, color](ImVec2 p, ImVec2 s) {
+					drawList->AddRect(p, p + s, color);
 				};
 
 				const auto columnWidth = glyphSize.y / 3.0f;
@@ -621,7 +622,7 @@ void FileSelector::renderHeader() {
 		for (auto i = pathStack.begin() + 1; i < pathStack.end(); i++) {
 			ImGui::PushID(&(*i));
 
-			if (ImGui::Selectable(reinterpret_cast<const char*>(i->name.c_str()))) {
+			if (ImGui::Selectable(i->name.c_str())) {
 				nextPath = i->path;
 			}
 
@@ -664,7 +665,76 @@ void FileSelector::renderHeader() {
 
 void FileSelector::renderIconView(ImVec2 size) {
 	ImGui::BeginChild("icons", size, ImGuiChildFlags_Borders);
-	ImGui::TextUnformatted("Not yet implemented");
+
+	auto drawList = ImGui::GetWindowDrawList();
+	auto font = ImGui::GetFont();
+	const auto color = ImGui::GetColorU32(ImGuiCol_Text);
+
+	const auto fontSize = ImGui::GetStyle().FontSizeBase - 2.0f;
+	const auto iconMargin = glyphSize.x * 4.0f;
+	const auto iconOffset = ImVec2(iconMargin, itemSpacing.y);
+	const auto iconSize = glyphSize.y * state.iconScale;
+	const auto right = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+
+	listing.forEach(state, [&](Entry& entry) {
+		const auto pos = ImGui::GetCursorScreenPos();
+		const auto label = entry.nameString.c_str();
+		const auto labelSize = font->CalcTextSizeA(fontSize, FLT_MAX, iconSize + iconMargin * 2.0f, label);
+		const auto entrySize = ImVec2(iconSize + iconMargin * 2.0f, itemSpacing.y + iconSize + labelSize.y);
+
+		if (ImGui::InvisibleButton(("##" + entry.nameString).c_str(), entrySize)) {
+			handleEntrySelection(entry);
+		}
+
+		if (ImGui::IsItemHovered()) {
+			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+				handleEntrySelection(entry);
+			}
+
+			if (ImGui::IsItemActive()) {
+				drawList->AddRectFilled(pos, pos + entrySize, ImGui::GetColorU32(ImGuiCol_HeaderActive));
+
+			} else {
+				drawList->AddRectFilled(pos, pos + entrySize, ImGui::GetColorU32(ImGuiCol_HeaderHovered));
+			}
+
+		} else if (entry.isSelected) {
+			drawList->AddRectFilled(pos, pos + entrySize, ImGui::GetColorU32(ImGuiCol_Header));
+		}
+
+		bool useBuiltInIcons = true;
+
+		if (iconRenderer) {
+			CustomIcon iconData{
+				pos + iconOffset,
+				ImVec2(iconSize, iconSize),
+				drawList,
+				entry.isDirectory,
+				entry.extension
+			};
+
+			if (iconRenderer(iconData)) {
+				useBuiltInIcons = false;
+			}
+		}
+
+		if (useBuiltInIcons) {
+			if (entry.isDirectory) {
+				FileSelectorIcons::RenderFolder(drawList, pos + iconOffset, state.iconScale);
+
+			} else {
+				FileSelectorIcons::RenderFile(drawList, pos + iconOffset, state.iconScale, entry.extension);
+			}
+		}
+
+		const auto labelPos = ImVec2(pos.x + (entrySize.x - labelSize.x) / 2.0f, pos.y + itemSpacing.y + iconSize);
+		drawList->AddText(font, fontSize, labelPos, color, label, 0, entrySize.x);
+
+		if (pos.x + entrySize.x * 2.0f < right) {
+			ImGui::SameLine();
+		}
+	});
+
 	ImGui::EndChild();
 }
 
@@ -710,7 +780,7 @@ void FileSelector::renderListView(ImVec2 size) {
 				ImGuiSelectableFlags_SpanAllColumns |
 				ImGuiSelectableFlags_AllowDoubleClick;
 
-			if (ImGui::Selectable(reinterpret_cast<const char*>(entry.nameString.c_str()), entry.isSelected, selectableFlags)) {
+			if (ImGui::Selectable(entry.nameString.c_str(), entry.isSelected, selectableFlags)) {
 				handleEntrySelection(entry);
 			}
 
@@ -1215,15 +1285,21 @@ void FileSelector::addDefaultMedia() {
 //
 
 void FileSelector::handleEntrySelection(Entry& entry) {
-	// handle clicking on an entry in a directory listing
+	// handle clicking on an entry in a directory
 	if (entry.isDirectory) {
 		if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 			nextPath = entry.path;
 
 		} else if (mode == Mode::selectDirectory) {
-			listing.clearSelections();
-			selectedPath = entry.path;
-			entry.isSelected = true;
+			if (entry.isSelected) {
+				selectedPath.clear();
+				entry.isSelected = false;
+
+			} else {
+				listing.clearSelections();
+				selectedPath = entry.path;
+				entry.isSelected = true;
+			}
 		}
 
 	} else {
@@ -1234,7 +1310,6 @@ void FileSelector::handleEntrySelection(Entry& entry) {
 					action = Action::selectedOpenFile;
 
 				} else if (entry.isSelected) {
-					listing.clearSelections();
 					selectedPath.clear();
 					entry.isSelected = false;
 

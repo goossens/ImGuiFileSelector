@@ -77,6 +77,8 @@ public:
 	inline SortOrder GetSortOrder() const { return state.sortOrder; }
 	inline void SetSideBarWidthInGlyphs(size_t glyphs) { state.sizeBarWidthInGlyphs = glyphs; }
 	inline size_t GetSideBarWidthInGlyphs() const { return state.sizeBarWidthInGlyphs; }
+	inline void SetIconScale(float value) { state.iconScale = value; }
+	inline float GetIconScale() const { return state.iconScale; }
 
 	inline void SetCurrentPath(const std::filesystem::path& path) { nextPath = path; }
 	inline const std::filesystem::path& GetCurrentPath() const { return nextPath.empty() ? state.currentPath : nextPath; }
@@ -152,6 +154,27 @@ public:
 	inline void AddMedia(const std::string& name, const std::filesystem::path& path) { media.entries.emplace_back(name, path); }
 	inline void AddDefaultMedia() { addDefaultMedia(); }
 
+	// provide a custom renderer for the icon view
+	struct CustomIcon {
+		// top left corner of icon
+		ImVec2 pos;
+
+		// size of icon in pixels
+		ImVec2 size;
+
+		// drawlist to render to
+		ImDrawList* drawList;
+
+		// item information
+		bool isDirectory;
+		std::string extension;
+	};
+
+	// if the custom renderer returns false, the file selector will render the icon using the build-in mechanism
+	inline void SetCustomIconRenderer(std::function<bool(const CustomIcon& data)> callback) { iconRenderer = callback; }
+	inline void ClearCustomIconRenderer() { iconRenderer = nullptr; }
+	inline bool HasCustomIconRenderer() const { return iconRenderer != nullptr; }
+
 	// state access (to make it persistent across program runs; app is responsible to save/restore it)
 	struct State {
 		std::filesystem::path currentPath;
@@ -164,6 +187,7 @@ public:
 		SortColumn sortColumn = SortColumn::name;
 		SortOrder sortOrder = SortOrder::ascending;
 		size_t sizeBarWidthInGlyphs = 25;
+		float iconScale = 4.0f;
 	};
 
 	void SetState(const State& newState);
@@ -307,6 +331,7 @@ private:
 	bool requestOpen = false;
 	std::function<void()> accessoryView;
 	float accessoryViewHeight=0.0f;
+	std::function<bool(const CustomIcon& data)> iconRenderer;
 
 	// directory traversal history
 	std::vector<std::filesystem::path> pathHistory;
