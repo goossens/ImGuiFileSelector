@@ -702,6 +702,12 @@ void FileSelector::renderIconView(ImVec2 size) {
 			drawList->AddRectFilled(pos, pos + entrySize, ImGui::GetColorU32(ImGuiCol_Header));
 		}
 
+		// render popup context menu for right click (ctrl-click on MacOS)
+		if (ImGui::BeginPopupContextItem()) {
+			renderEntryContextMenu(entry);
+			ImGui::EndPopup();
+		}
+
 		bool useBuiltInIcons = true;
 
 		if (iconRenderer) {
@@ -734,6 +740,37 @@ void FileSelector::renderIconView(ImVec2 size) {
 			ImGui::SameLine();
 		}
 	});
+
+	if (ImGui::BeginPopupContextWindow(nullptr, ImGuiPopupFlags_NoOpenOverItems)) {
+		auto sortMenu = [this](const std::string& label, SortColumn column) {
+			bool isSelected = state.sortColumn == column;
+
+			if (ImGui::MenuItem(label.c_str(), nullptr, isSelected)) {
+				if (isSelected) {
+					state.sortOrder = (state.sortOrder == SortOrder::ascending)
+						? SortOrder::descending
+						: SortOrder::ascending;
+
+				} else {
+					state.sortColumn = column;
+					state.sortOrder = SortOrder::ascending;
+				}
+
+				listing.sort(state);
+			}
+		};
+
+		if (ImGui::MenuItem("Show in Finder", nullptr, false, false)) {
+		}
+
+		ImGui::Separator();
+		ImGui::TextDisabled("%s", labels.sortItemsBy.c_str());
+		sortMenu(labels.nameColumn, SortColumn::name);
+		sortMenu(labels.typeColumn, SortColumn::type);
+		sortMenu(labels.dateColumn, SortColumn::date);
+		sortMenu(labels.sizeColumn, SortColumn::size);
+		ImGui::EndPopup();
+	}
 
 	ImGui::EndChild();
 }
@@ -786,46 +823,7 @@ void FileSelector::renderListView(ImVec2 size) {
 
 			// render popup context menu for right click (ctrl-click on MacOS)
 			if (ImGui::BeginPopupContextItem()) {
-				if (ImGui::MenuItem(labels.rename.c_str())) {
-					openRename = true;
-					oldMoveName = entry.nameString;
-				}
-
-				if (ImGui::MenuItem(labels.moveToTrash.c_str())) {
-					if (moveToTrashCan(entry.path, errorMessage)) {
-						refreshListing = true;
-
-					} else {
-						openError = true;
-					}
-
-				}
-
-				if (ImGui::MenuItem(labels.duplicate.c_str())) {
-					std::error_code ec;
-
-					std::filesystem::copy(
-						entry.path,
-						getDuplicatePathName(entry.path),
-						std::filesystem::copy_options::recursive,
-						ec);
-
-					if (ec) {
-						errorMessage = ec.message();
-						openError = true;
-
-					} else {
-						nextPath = state.currentPath;
-					}
-				}
-
-				if (ImGui::MenuItem(labels.permissions.c_str())) {
-					oldPermissions = std::filesystem::status(entry.path).permissions();
-					newPermissions = oldPermissions;
-					permissionsPath = entry.path;
-					openPermissions = true;
-				}
-
+				renderEntryContextMenu(entry);
 				ImGui::EndPopup();
 			}
 
@@ -855,6 +853,54 @@ void FileSelector::renderColumnsView(ImVec2 size) {
 	ImGui::BeginChild("icons", size, ImGuiChildFlags_Borders);
 	ImGui::TextUnformatted("Not yet implemented");
 	ImGui::EndChild();
+}
+
+
+//
+//	FileSelector::renderEntryContextMenu
+//
+
+void FileSelector::renderEntryContextMenu(Entry& entry) {
+	if (ImGui::MenuItem(labels.rename.c_str())) {
+		openRename = true;
+		oldMoveName = entry.nameString;
+	}
+
+	if (ImGui::MenuItem(labels.moveToTrash.c_str())) {
+		if (moveToTrashCan(entry.path, errorMessage)) {
+			refreshListing = true;
+
+		} else {
+			openError = true;
+		}
+
+	}
+
+	if (ImGui::MenuItem(labels.duplicate.c_str())) {
+		std::error_code ec;
+
+		std::filesystem::copy(
+			entry.path,
+			getDuplicatePathName(entry.path),
+			std::filesystem::copy_options::recursive,
+			ec);
+
+		if (ec) {
+			errorMessage = ec.message();
+			openError = true;
+
+		} else {
+			nextPath = state.currentPath;
+		}
+	}
+
+	if (ImGui::MenuItem(labels.permissions.c_str())) {
+		oldPermissions = std::filesystem::status(entry.path).permissions();
+		newPermissions = oldPermissions;
+		permissionsPath = entry.path;
+		openPermissions = true;
+	}
+
 }
 
 

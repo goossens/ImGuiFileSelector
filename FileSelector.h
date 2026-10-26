@@ -216,6 +216,7 @@ public:
 		std::string showSideBar;
 		std::string showHidden;
 		std::string showItemsAs;
+		std::string sortItemsBy;
 		std::string icons;
 		std::string list;
 		std::string columns;
@@ -274,6 +275,7 @@ private:
 		"Show Sidebar",
 		"Show Hidden",
 		"Show items as:",
+		"Sort items by:",
 		"Icons",
 		"List",
 		"Columns",
@@ -476,6 +478,7 @@ private:
 	void renderIconView(ImVec2 size);
 	void renderListView(ImVec2 size);
 	void renderColumnsView(ImVec2 size);
+	void renderEntryContextMenu(Entry& entry);
 	void renderActionButtons();
 	void renderPopups();
 	void renderOverWritePopup();
