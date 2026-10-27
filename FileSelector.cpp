@@ -2455,14 +2455,14 @@ void FileSelector::showInFinder(const std::filesystem::path& path) {
 
 #if __APPLE__
 	const auto command ="open '" + encodedUrl + "'";
-	std::system(command.c_str());
+	[[maybe_unused]] auto result = std::system(command.c_str());
 
 #elif _WIN32
 	const auto command ="start '" + encodedUrl + "'";
-	std::system(command.c_str());
+	[[maybe_unused]] auto result = std::system(command.c_str());
 
 #else
 	const auto command ="xdg-open '" + encodedUrl + "'";
-	std::system(command.c_str());
+	[[maybe_unused]] auto result = std::system(command.c_str());
 #endif
 }
