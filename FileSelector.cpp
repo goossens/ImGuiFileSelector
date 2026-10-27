@@ -708,31 +708,19 @@ void FileSelector::renderIconView(ImVec2 size) {
 			ImGui::EndPopup();
 		}
 
-		bool useBuiltInIcons = true;
+		// render the icon
+		IconData iconData{
+			pos + iconOffset,
+			state.iconScale,
+			ImVec2(iconSize, iconSize),
+			drawList,
+			entry.isDirectory,
+			entry.extension
+		};
 
-		if (iconRenderer) {
-			CustomIcon iconData{
-				pos + iconOffset,
-				ImVec2(iconSize, iconSize),
-				drawList,
-				entry.isDirectory,
-				entry.extension
-			};
+		renderIcon(iconData);
 
-			if (iconRenderer(iconData)) {
-				useBuiltInIcons = false;
-			}
-		}
-
-		if (useBuiltInIcons) {
-			if (entry.isDirectory) {
-				FileSelectorIcons::RenderFolder(drawList, pos + iconOffset, state.iconScale);
-
-			} else {
-				FileSelectorIcons::RenderFile(drawList, pos + iconOffset, state.iconScale, entry.extension);
-			}
-		}
-
+		// render the label
 		const auto labelPos = ImVec2(pos.x + (entrySize.x - labelSize.x) / 2.0f, pos.y + itemSpacing.y + iconSize);
 		drawList->AddText(font, fontSize, labelPos, color, label, 0, entrySize.x);
 
@@ -815,6 +803,22 @@ void FileSelector::renderListView(ImVec2 size) {
 			// show filename
 			ImGui::TableSetColumnIndex(0);
 
+			// render the icon
+			const auto iconSize = ImVec2(glyphSize.y, glyphSize.y);
+
+			IconData iconData{
+				ImGui::GetCursorScreenPos(),
+				1.0f,
+				iconSize,
+				ImGui::GetWindowDrawList(),
+				entry.isDirectory,
+				entry.extension
+			};
+
+			renderIcon(iconData);
+			ImGui::Dummy(iconSize);
+			ImGui::SameLine();
+
 			ImGuiSelectableFlags selectableFlags =
 				ImGuiSelectableFlags_SpanAllColumns |
 				ImGuiSelectableFlags_AllowDoubleClick;
@@ -855,6 +859,30 @@ void FileSelector::renderColumnsView(ImVec2 size) {
 	ImGui::BeginChild("icons", size, ImGuiChildFlags_Borders);
 	ImGui::TextUnformatted("Not yet implemented");
 	ImGui::EndChild();
+}
+
+
+//
+//	FileSelector::renderIcon
+//
+
+void FileSelector::renderIcon(const IconData& data) {
+	bool useBuiltInIcons = true;
+
+	if (iconRenderer) {
+		if (iconRenderer(data)) {
+			useBuiltInIcons = false;
+		}
+	}
+
+	if (useBuiltInIcons) {
+		if (data.isDirectory) {
+			FileSelectorIcons::RenderFolder(data.drawList, data.pos, data.scale);
+
+		} else {
+			FileSelectorIcons::RenderFile(data.drawList, data.pos, data.scale, data.extension);
+		}
+	}
 }
 
 

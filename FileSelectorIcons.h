@@ -27,8 +27,8 @@ class FileSelectorIcons {
 public:
 	// render icons (size is expressed in FontSizeBase units)
 	// (e.g. size = 4.0f means four times as big as the current text)
-	static void RenderFile(ImDrawList* drawList, ImVec2 pos, float size, const std::string& extension);
-	static void RenderFolder(ImDrawList* drawList, ImVec2 pos, float size);
+	static void RenderFile(ImDrawList* drawList, ImVec2 pos, float scale, const std::string& extension);
+	static void RenderFolder(ImDrawList* drawList, ImVec2 pos, float scale);
 
 	// access icon data
 	static ImFont* GetFont();
@@ -64,5 +64,5 @@ private:
 	static constexpr size_t iconSize = 3328;
 
 	// support functions
-	static void render(ImDrawList* drawList, ImVec2 pos, float size, Codepoint codepoint);
+	static void render(ImDrawList* drawList, ImVec2 pos, float scale, Codepoint codepoint);
 };

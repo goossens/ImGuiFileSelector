@@ -19,7 +19,7 @@
 //	FileSelectorIcons::RenderFile
 //
 
-void FileSelectorIcons::RenderFile(ImDrawList* drawList, ImVec2 pos, float size, const std::string& extension) {
+void FileSelectorIcons::RenderFile(ImDrawList* drawList, ImVec2 pos, float scale, const std::string& extension) {
 	static std::unordered_map<std::string, Codepoint> icons = {
 		{".c", fileCode},
 		{".cpp", fileCode},
@@ -56,7 +56,7 @@ void FileSelectorIcons::RenderFile(ImDrawList* drawList, ImVec2 pos, float size,
 		codepoint = icons[extension];
 	}
 
-	render(drawList, pos, size, codepoint);
+	render(drawList, pos, scale, codepoint);
 }
 
 
@@ -64,8 +64,8 @@ void FileSelectorIcons::RenderFile(ImDrawList* drawList, ImVec2 pos, float size,
 //	FileSelectorIcons::RenderFolder
 //
 
-void FileSelectorIcons::RenderFolder(ImDrawList* drawList, ImVec2 pos, float size) {
-	render(drawList, pos, size, folder);
+void FileSelectorIcons::RenderFolder(ImDrawList* drawList, ImVec2 pos, float scale) {
+	render(drawList, pos, scale, folder);
 }
 
 
@@ -73,10 +73,10 @@ void FileSelectorIcons::RenderFolder(ImDrawList* drawList, ImVec2 pos, float siz
 //	FileSelectorIcons::render
 //
 
-void FileSelectorIcons::render(ImDrawList* drawList, ImVec2 pos, float size, Codepoint codepoint) {
+void FileSelectorIcons::render(ImDrawList* drawList, ImVec2 pos, float scale, Codepoint codepoint) {
 	drawList->AddText(
 		GetFont(),
-		ImGui::GetStyle().FontSizeBase * size,
+		ImGui::GetStyle().FontSizeBase * scale,
 		pos,
 		ImGui::GetColorU32(ImGuiCol_TextDisabled),
 		codepoint);

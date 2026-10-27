@@ -155,11 +155,15 @@ public:
 	inline void AddDefaultMedia() { addDefaultMedia(); }
 
 	// data for a custom icon renderer
-	struct CustomIcon {
+	struct IconData {
 		// top left corner of icon
 		ImVec2 pos;
 
-		// size of icon in pixels
+		// scale of icon
+		// use this if icons are font based (e.g. ImGui::PushFont(iconFont, scale * ImGui::GetStyle().FontSizeBase))
+		float scale;
+
+		// size of icon in pixels = GetFontSize() * scale
 		ImVec2 size;
 
 		// drawlist to render to
@@ -172,7 +176,7 @@ public:
 
 	// provide a custom icon renderer
 	// if the custom renderer returns false, the file selector will render the icon using the build-in mechanism
-	inline void SetCustomIconRenderer(std::function<bool(const CustomIcon&)> callback) { iconRenderer = callback; }
+	inline void SetCustomIconRenderer(std::function<bool(const IconData&)> callback) { iconRenderer = callback; }
 	inline void ClearCustomIconRenderer() { iconRenderer = nullptr; }
 	inline bool HasCustomIconRenderer() const { return iconRenderer != nullptr; }
 
@@ -359,7 +363,7 @@ private:
 	bool requestOpen = false;
 	std::function<void()> accessoryView;
 	float accessoryViewHeight=0.0f;
-	std::function<bool(const CustomIcon& data)> iconRenderer;
+	std::function<bool(const IconData& data)> iconRenderer;
 
 	// directory traversal history
 	std::vector<std::filesystem::path> pathHistory;
@@ -504,6 +508,7 @@ private:
 	void renderIconView(ImVec2 size);
 	void renderListView(ImVec2 size);
 	void renderColumnsView(ImVec2 size);
+	void renderIcon(const IconData& data);
 	void renderEntryContextMenu(Entry& entry);
 	void renderActionButtons();
 	void renderPopups();

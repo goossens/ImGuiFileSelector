@@ -81,7 +81,7 @@ void Selector::render() {
 
 	if (ImGui::Checkbox("Use custom folder renderer", &customFolderRenderer)) {
 		if (customFolderRenderer) {
-			selector.SetCustomIconRenderer([](const FileSelector::CustomIcon& data) {
+			selector.SetCustomIconRenderer([](const FileSelector::IconData& data) {
 				if (data.isDirectory) {
 					const auto center = data.pos + data.size * 0.5f;
 					const auto radius = data.size.x * 0.5f;

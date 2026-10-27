@@ -40,7 +40,7 @@ Simple File Selector for Dear ImGui with a MacOS pedigree/layout and a Dear ImGu
 	- Icon view
 	- List view (default)
 	- Columns View
-= A small set of icons is include for icon view but a custom icon renderer can be provided by the application.
+= A small set of icons is included for icon view but a [custom icon renderer](docs/customicons.md) can be provided by the application.
 - Directory filtering:
 	- Show/hide hidden files/directories.
 	- Filter files by extension.
