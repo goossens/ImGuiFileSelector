@@ -154,7 +154,7 @@ public:
 	inline void AddMedia(const std::string& name, const std::filesystem::path& path) { media.entries.emplace_back(name, path); }
 	inline void AddDefaultMedia() { addDefaultMedia(); }
 
-	// provide a custom renderer for the icon view
+	// data for a custom icon renderer
 	struct CustomIcon {
 		// top left corner of icon
 		ImVec2 pos;
@@ -170,8 +170,9 @@ public:
 		std::string extension;
 	};
 
+	// provide a custom icon renderer
 	// if the custom renderer returns false, the file selector will render the icon using the build-in mechanism
-	inline void SetCustomIconRenderer(std::function<bool(const CustomIcon& data)> callback) { iconRenderer = callback; }
+	inline void SetCustomIconRenderer(std::function<bool(const CustomIcon&)> callback) { iconRenderer = callback; }
 	inline void ClearCustomIconRenderer() { iconRenderer = nullptr; }
 	inline bool HasCustomIconRenderer() const { return iconRenderer != nullptr; }
 
@@ -236,6 +237,7 @@ public:
 		std::string errorWindow;
 		std::string fileExists;
 		std::string moveToTrash;
+		std::string showInFinder;
 		std::string duplicate;
 		std::string copy;
 		std::string timeFormat;
@@ -250,6 +252,29 @@ public:
 
 	void SetLabels(struct Labels& newLabels);
 	inline const Labels& GetLabels() const { return labels; }
+
+	// support functions to convert between std::filesystem::path and std::string in UTF-8 encoding
+	static inline std::string pathToString(const std::filesystem::path& path) {
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
+	auto u8Str = path.generic_u8string();
+	std::string str(u8Str.begin(), u8Str.end());
+	return str;
+
+#else
+		return path.u8string();
+#endif
+	}
+
+	static inline std::filesystem::path stringToPath(const std::string& string) {
+#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
+		return std::filesystem::path(
+			reinterpret_cast<const char8_t*>(string.data()),
+			reinterpret_cast<const char8_t*>(string.data() + string.size()));
+
+#else
+		return std::filesystem::u8path(string);
+#endif
+	}
 
 private:
 	// configuration
@@ -295,6 +320,7 @@ private:
 		"Error...",
 		"File Exists, do you want to overwrite it?",
 		"Move to Trash",
+		"Show in Finder",
 		"Duplicate",
 		"copy",
 		"%b %d, %Y at %I:%M %p",
@@ -507,28 +533,6 @@ private:
 
 	std::filesystem::path getDuplicatePathName(const std::filesystem::path& path);
 
-	static inline std::string pathToString(const std::filesystem::path& path) {
-#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
-	auto u8Str = path.generic_u8string();
-	std::string str(u8Str.begin(), u8Str.end());
-	return str;
-
-#else
-		return path.u8string();
-#endif
-	}
-
-	static inline std::filesystem::path stringToPath(const std::string& string) {
-#if (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L) || (__cplusplus >= 202002L)
-		return std::filesystem::path(
-			reinterpret_cast<const char8_t*>(string.data()),
-			reinterpret_cast<const char8_t*>(string.data() + string.size()));
-
-#else
-		return std::filesystem::u8path(string);
-#endif
-	}
-
 	// OS-specific local functions
 	static std::filesystem::path getHome();
 	static bool isHidden(const std::filesystem::path& path);
@@ -536,4 +540,5 @@ private:
 	static void getKnownDirectoryInfo(KnownDirectory type, std::string& label, std::filesystem::path& path);
 	static void forEachKnownLocation(std::function<void(const std::string& name, const std::filesystem::path& path)> callback);
 	static bool moveToTrashCan(const std::filesystem::path& path, std::string& errorMessage);
+	static void showInFinder(const std::filesystem::path& path);
 };

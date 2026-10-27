@@ -760,10 +760,12 @@ void FileSelector::renderIconView(ImVec2 size) {
 			}
 		};
 
-		if (ImGui::MenuItem("Show in Finder", nullptr, false, false)) {
+		if (ImGui::MenuItem(labels.showInFinder.c_str())) {
+			showInFinder(state.currentPath.parent_path());
 		}
 
 		ImGui::Separator();
+
 		ImGui::TextDisabled("%s", labels.sortItemsBy.c_str());
 		sortMenu(labels.nameColumn, SortColumn::name);
 		sortMenu(labels.typeColumn, SortColumn::type);
@@ -901,6 +903,9 @@ void FileSelector::renderEntryContextMenu(Entry& entry) {
 		openPermissions = true;
 	}
 
+	if (ImGui::MenuItem(labels.showInFinder.c_str())) {
+		showInFinder(entry.path.parent_path());
+	}
 }
 
 
@@ -1936,8 +1941,6 @@ std::filesystem::path FileSelector::getDuplicatePathName(const std::filesystem::
 #undef APIENTRY
 #endif
 
-#include <cstdlib>
-
 #include <windows.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -1945,7 +1948,6 @@ std::filesystem::path FileSelector::getDuplicatePathName(const std::filesystem::
 #pragma comment(lib, "Shell32.lib")
 
 #else
-#include <cstdlib>
 #include <pwd.h>
 #include <unistd.h>
 
@@ -2396,5 +2398,43 @@ bool FileSelector::moveToTrashCan(const std::filesystem::path& path, std::string
 	}
 
 	return result;
+#endif
+}
+
+
+//
+//	FileSelector::showInFinder
+//
+
+void FileSelector::showInFinder(const std::filesystem::path& path) {
+	const auto rawUrl = "file://" + pathToString(std::filesystem::canonical(path));
+	std::stringstream ss;
+
+	for (auto ch : rawUrl) {
+		if (isalnum(ch) ||
+			ch == ':' || ch == '/' || ch == '?' || ch == '#' || ch == '@' || ch == '[' || ch == ']' ||
+			ch == '!' || ch == '$' || ch == '&' || ch == '(' || ch == ')' ||
+			ch == '*' || ch == '+' || ch == ',' || ch == ';' || ch == '=') {
+
+			ss << ch;
+
+		} else {
+			ss << "%" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ch);
+		}
+	}
+
+	const auto encodedUrl = ss.str();
+
+#if __APPLE__
+	const auto command ="open '" + encodedUrl + "'";
+	std::system(command.c_str());
+
+#elif _WIN32
+	const auto command ="start '" + encodedUrl + "'";
+	std::system(command.c_str());
+
+#else
+	const auto command ="xdg-open '" + encodedUrl + "'";
+	std::system(command.c_str());
 #endif
 }
