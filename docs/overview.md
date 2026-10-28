@@ -1,11 +1,22 @@
 ## API Overview
 
-To use this widget, you need to fullfil 4 requirements:
+To use this widget, you need to fullfil 5 requirements:
 
+- Integrate widget in your project.
 - Determine how you instantiate the widget.
 - Open the widget in one of the supported modes.
 - Render the widget as part of your ImGui loop.
 - Respond to user selections or cancellations.
+
+### Integrate Widget
+
+You integrate the File Selector widget in your project by including the following 4 files
+from the top level of this repository in your project:
+
+- FileSelector.cpp
+- FileSelector.h
+- FileSelectorIcons.cpp
+- FileSelectorIcons.h
 
 ### Widget Instantiation
 You have two choices for widget instantiation. You can either instantiate it somewhere
